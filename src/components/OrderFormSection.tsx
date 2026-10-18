@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { siteConfig, formatNaira } from '../config/site';
 import { useAdminData } from '../hooks/useAdminData';
 import { PackageSelection } from './PackagesSection';
-import { AlertTriangle, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, AlertCircle, Loader2, MessageCircle } from 'lucide-react';
 
 interface OrderFormSectionProps {
   selectedPackage: PackageSelection;
@@ -236,7 +236,7 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
             `*ORDER SUBMITTED: ${siteConfig.productName}*\nPackage: ${orderPayload.package}\nCustomer: ${fullName}\nPhone: ${normalizedPrimary}\nVehicle: ${vehicleMake} ${vehicleModel} (${vehicleYear})\nState: ${state}, ${cityTown}\nAddress: ${fullAddress}\n(Sent after web order submission)`
           );
           try {
-            window.open(`https://wa.me/${siteConfig.whatsappNumber.replace(/[^0-9]/g, '')}?text=${message}`, '_blank');
+            window.open(`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${message}`, '_blank');
           } catch (err) {
             // Ignore window.open errors in sandbox
           }
@@ -262,20 +262,56 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
           <p className="text-sm text-[#777777] max-w-xl mx-auto">
             Complete your details so the seller can review your order and help confirm vehicle compatibility.
           </p>
+
+          {isWhatsAppConfigured && (
+            <div className="pt-2">
+              <a
+                href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                  `Hello FRANKBLAISE PARTS, I would like to order the ${
+                    selectedPackage === 'double' ? 'Double Pump Package (2 Pumps)' : 'Single Pump Package (1 Pump)'
+                  }. Please confirm vehicle compatibility and delivery details.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs sm:text-sm shadow-md transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Chat or Order via WhatsApp ({currentWhatsApp})</span>
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Prototype Warning Banner if Endpoint is not configured */}
         {!isEndpointConfigured && (
-          <div className="mb-8 p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-start gap-3.5 text-xs sm:text-sm text-amber-900">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <span className="font-bold block">
-                Order submission is not yet connected. This is a prototype.
-              </span>
-              <p className="text-xs text-amber-800 leading-relaxed">
-                To enable live order processing, configure <code className="font-mono bg-amber-100 px-1 py-0.5 rounded text-amber-950">orderEndpointUrl</code> in <code className="font-mono bg-amber-100 px-1 py-0.5 rounded text-amber-950">src/config/site.ts</code> with your form endpoint (e.g., Formspree, Google Sheets webhook, or backend API). The form will validate inputs but will not submit or falsely report orders.
-              </p>
+          <div className="mb-8 p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex flex-col sm:flex-row items-start justify-between gap-4 text-xs sm:text-sm text-amber-900">
+            <div className="flex items-start gap-3.5">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-bold block">
+                  Web form submission endpoint is in prototype mode.
+                </span>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  For immediate ordering and rapid verification of your vehicle specs, contact FRANKBLAISE directly on WhatsApp.
+                </p>
+              </div>
             </div>
+
+            {isWhatsAppConfigured && (
+              <a
+                href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                  `Hello FRANKBLAISE PARTS, I want to order the FRANKBLAISE Fuel Pump Plus (${
+                    selectedPackage === 'double' ? '2 Pumps' : '1 Pump'
+                  }).`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Order on WhatsApp</span>
+              </a>
+            )}
           </div>
         )}
 

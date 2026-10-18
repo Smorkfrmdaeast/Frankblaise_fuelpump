@@ -152,13 +152,15 @@ export const CustomerExperiencesSection: React.FC<CustomerExperiencesSectionProp
           {hasWhatsApp && (
             <div>
               <a
-                href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}`}
+                href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                  'Hello FRANKBLAISE PARTS, I would like to ask a few questions about customer reviews and compatibility for the Electric Fuel Pump Plus.'
+                )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-tap-target inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-md"
+                className="min-tap-target inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer shadow-lg"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Contact Seller on WhatsApp</span>
+                <span>Contact Seller on WhatsApp ({currentWhatsApp})</span>
               </a>
             </div>
           )}

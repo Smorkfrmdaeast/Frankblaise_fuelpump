@@ -1,12 +1,17 @@
 import React from 'react';
 import { siteConfig } from '../config/site';
-import { Lock } from 'lucide-react';
+import { useAdminData } from '../hooks/useAdminData';
+import { Lock, MessageCircle } from 'lucide-react';
 
 interface FooterSectionProps {
   onOpenAdminPortal?: () => void;
 }
 
 export const FooterSection: React.FC<FooterSectionProps> = ({ onOpenAdminPortal }) => {
+  const adminData = useAdminData();
+  const currentWhatsApp = adminData.whatsappNumber || siteConfig.whatsappNumber;
+  const hasWhatsApp = Boolean(currentWhatsApp && currentWhatsApp.trim() !== '');
+
   return (
     <footer className="bg-[#0B0B0D] text-neutral-400 py-12 border-t border-neutral-800 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-6 text-center sm:text-left">
@@ -24,6 +29,22 @@ export const FooterSection: React.FC<FooterSectionProps> = ({ onOpenAdminPortal 
             <a href="#packages" className="hover:text-white transition-colors">Packages</a>
             <span aria-hidden="true">·</span>
             <a href="#order-form" className="hover:text-white transition-colors">Order Form</a>
+            {hasWhatsApp && (
+              <>
+                <span aria-hidden="true">·</span>
+                <a
+                  href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                    'Hello FRANKBLAISE PARTS, I would like to inquire about the Electric Fuel Pump Plus.'
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-emerald-400 transition-colors flex items-center gap-1 cursor-pointer text-emerald-400/90 font-medium"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                  <span>WhatsApp: {currentWhatsApp}</span>
+                </a>
+              </>
+            )}
             {onOpenAdminPortal && (
               <>
                 <span aria-hidden="true">·</span>

@@ -54,8 +54,8 @@ export const siteConfig: SiteConfig = {
   brandName: 'FRANKBLAISE PARTS',
   productName: 'FRANKBLAISE ELECTRIC FUEL PUMP PLUS',
 
-  // SELLER INTEGRATIONS (Defaulted to empty strings for safety)
-  whatsappNumber: '', // Example: '2348012345678'
+  // SELLER INTEGRATIONS
+  whatsappNumber: '+234 706 540 0645', // Official WhatsApp support: +234 706 540 0645
   orderEndpointUrl: '', // Example: 'https://formspree.io/f/your_form_id' or your webhook URL
 
   // PRODUCT VIDEO

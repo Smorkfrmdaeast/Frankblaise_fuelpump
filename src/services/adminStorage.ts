@@ -36,7 +36,10 @@ export function getAdminData(): AdminStoreData {
       singlePrice: typeof parsed.singlePrice === 'number' ? parsed.singlePrice : siteConfig.prices.singlePump,
       doublePrice: typeof parsed.doublePrice === 'number' ? parsed.doublePrice : siteConfig.prices.doublePump,
       videoUrl: parsed.videoUrl !== undefined ? parsed.videoUrl : siteConfig.video.url,
-      whatsappNumber: typeof parsed.whatsappNumber === 'string' ? parsed.whatsappNumber : siteConfig.whatsappNumber,
+      whatsappNumber:
+        typeof parsed.whatsappNumber === 'string' && parsed.whatsappNumber.trim() !== ''
+          ? parsed.whatsappNumber
+          : siteConfig.whatsappNumber,
     };
   } catch (err) {
     return {
