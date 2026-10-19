@@ -95,7 +95,7 @@ export const InteractiveDiagram: React.FC = () => {
             <div className="relative rounded-2xl overflow-hidden border border-neutral-700 bg-neutral-950 p-2 shadow-2xl">
               <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-neutral-950">
                 <img
-                  src="/src/assets/images/fuel_pump_cutaway_diagram_1792348149087.jpg"
+                  src="/images/fuel_pump_cutaway_diagram_1792348149087.jpg"
                   alt="Frankblaise Electric Fuel Pump internal cutaway diagram showing copper armature and turbine impeller"
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"

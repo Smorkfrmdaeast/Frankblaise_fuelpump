@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
-import { siteConfig, formatNaira } from '../config/site';
-import { useAdminData } from '../hooks/useAdminData';
+import { useProductConfig } from '../hooks/useProductConfig';
+import { formatNaira } from '../config/site';
+import {
+  isFirebaseConfigured,
+  submitOrderToBackend,
+} from '../services/firebase';
 import { PackageSelection } from './PackagesSection';
-import { AlertTriangle, CheckCircle2, AlertCircle, Loader2, MessageCircle } from 'lucide-react';
+import { NIGERIAN_STATES } from '../data/nigeriaStates';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  MessageCircle,
+  ShieldCheck,
+} from 'lucide-react';
 
 interface OrderFormSectionProps {
   selectedPackage: PackageSelection;
@@ -13,9 +25,9 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
   selectedPackage,
   onSelectPackage,
 }) => {
-  const adminData = useAdminData();
+  const config = useProductConfig();
 
-  // Field values
+  // Form Fields
   const [fullName, setFullName] = useState('');
   const [primaryPhone, setPrimaryPhone] = useState('');
   const [altPhone, setAltPhone] = useState('');
@@ -24,54 +36,37 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
   const [vehicleMake, setVehicleMake] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleYear, setVehicleYear] = useState('');
-  const [engineType, setEngineType] = useState('');
+  const [engineSize, setEngineSize] = useState('');
   const [existingPartNumber, setExistingPartNumber] = useState('');
 
-  const [state, setState] = useState('');
+  const [selectedState, setSelectedState] = useState('');
   const [cityTown, setCityTown] = useState('');
   const [fullAddress, setFullAddress] = useState('');
   const [nearestLandmark, setNearestLandmark] = useState('');
 
-  // Form states
+  // States
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [serverSuccess, setServerSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmedOrderRef, setConfirmedOrderRef] = useState<string | null>(null);
 
-  const currentWhatsApp = adminData.whatsappNumber || siteConfig.whatsappNumber;
-  const isEndpointConfigured = Boolean(
-    siteConfig.orderEndpointUrl && siteConfig.orderEndpointUrl.trim() !== ''
-  );
-  const isWhatsAppConfigured = Boolean(
-    currentWhatsApp && currentWhatsApp.trim() !== ''
-  );
-
-  // Generate vehicle production years from current year down to 1980
+  // Vehicle years: current year down to 1980
   const currentYear = new Date().getFullYear();
   const years: number[] = [];
   for (let y = currentYear; y >= 1980; y--) {
     years.push(y);
   }
 
-  // All 36 Nigerian States + FCT
-  const nigerianStates = [
-    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
-    'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT (Abuja)', 'Gombe',
-    'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
-    'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
-    'Taraba', 'Yobe', 'Zamfara'
-  ];
-
-  // Pricing calculations
-  const quantity = selectedPackage === 'double' ? 2 : 1;
-  const productTotal =
+  // Authoritative price calculation
+  const unitPrice =
     selectedPackage === 'double'
-      ? adminData.doublePrice
-      : adminData.singlePrice;
-  const finalTotal = productTotal; // No invented delivery fee; delivery charges pending seller confirmation
+      ? config.prices.doublePump
+      : config.prices.singlePump;
+  const quantity = selectedPackage === 'double' ? 2 : 1;
+  const totalAmount = unitPrice;
 
-  // Phone normalization: accepts 0XXXXXXXXXX (11 digits) or +234XXXXXXXXXX
+  // Phone Normalization and validation
   const validatePhone = (phoneStr: string): { valid: boolean; normalized: string } => {
     const cleaned = phoneStr.trim().replace(/[\s-]/g, '');
     if (/^0[789][01]\d{8}$/.test(cleaned)) {
@@ -86,306 +81,355 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
     return { valid: false, normalized: cleaned };
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const validateAll = () => {
+    const errs: Record<string, string> = {};
 
     if (!fullName.trim()) {
-      newErrors.fullName = 'Full name is required.';
+      errs.fullName = 'Full legal or contact name is required.';
     }
 
     if (!primaryPhone.trim()) {
-      newErrors.primaryPhone = 'Primary phone number is required.';
+      errs.primaryPhone = 'Primary phone number is required.';
     } else {
       const check = validatePhone(primaryPhone);
       if (!check.valid) {
-        newErrors.primaryPhone =
-          'Please enter a valid Nigerian phone number (e.g., 08012345678 or +2348012345678).';
+        errs.primaryPhone =
+          'Please enter a valid Nigerian mobile number (e.g. 08012345678 or +2348012345678).';
       }
     }
 
     if (altPhone.trim()) {
       const check = validatePhone(altPhone);
       if (!check.valid) {
-        newErrors.altPhone = 'Please enter a valid phone number or leave blank.';
+        errs.altPhone = 'Please enter a valid alternative phone or leave empty.';
       }
     }
 
     if (whatsappPhone.trim()) {
       const check = validatePhone(whatsappPhone);
       if (!check.valid) {
-        newErrors.whatsappPhone = 'Please enter a valid WhatsApp number or leave blank.';
+        errs.whatsappPhone = 'Please enter a valid WhatsApp number or leave empty.';
       }
     }
 
     if (!vehicleMake.trim()) {
-      newErrors.vehicleMake = 'Vehicle make is required.';
+      errs.vehicleMake = 'Vehicle make is required (e.g. Toyota, Honda, Nissan).';
     }
 
     if (!vehicleModel.trim()) {
-      newErrors.vehicleModel = 'Vehicle model is required.';
+      errs.vehicleModel = 'Vehicle model is required (e.g. Corolla, Civic, Almera).';
     }
 
     if (!vehicleYear.trim()) {
-      newErrors.vehicleYear = 'Production year is required.';
+      errs.vehicleYear = 'Production year is required.';
     }
 
-    if (!state.trim()) {
-      newErrors.state = 'Delivery state is required.';
+    if (!selectedState.trim()) {
+      errs.state = 'Delivery state is required.';
     }
 
     if (!cityTown.trim()) {
-      newErrors.cityTown = 'City or town is required.';
+      errs.cityTown = 'City or LGA locality is required.';
     }
 
     if (!fullAddress.trim()) {
-      newErrors.fullAddress = 'Full delivery address is required.';
+      errs.fullAddress = 'Detailed street delivery address is required.';
     }
 
-    if (!nearestLandmark.trim()) {
-      newErrors.nearestLandmark = 'Nearest bus stop or landmark is required.';
-    }
-
-    return newErrors;
+    return errs;
   };
 
   const handleBlur = (field: string) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
-    const formErrors = validateForm();
-    setErrors(formErrors);
+    const currentErrs = validateAll();
+    setErrors(currentErrs);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setServerError(null);
+    setSubmitError(null);
 
-    // Mark all as touched
-    const allFields = [
-      'fullName', 'primaryPhone', 'vehicleMake', 'vehicleModel',
-      'vehicleYear', 'state', 'cityTown', 'fullAddress', 'nearestLandmark'
+    // Mark required fields touched
+    const requiredFields = [
+      'fullName',
+      'primaryPhone',
+      'vehicleMake',
+      'vehicleModel',
+      'vehicleYear',
+      'state',
+      'cityTown',
+      'fullAddress',
     ];
-    const touchedMap: Record<string, boolean> = {};
-    allFields.forEach((f) => { touchedMap[f] = true; });
-    setTouched(touchedMap);
+    const touchedAll: Record<string, boolean> = {};
+    requiredFields.forEach((f) => (touchedAll[f] = true));
+    setTouched(touchedAll);
 
-    const formErrors = validateForm();
+    const formErrors = validateAll();
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
-      // Focus first invalid field
-      const firstKey = Object.keys(formErrors)[0];
-      const element = document.getElementById(`field-${firstKey}`);
-      if (element) {
-        element.focus();
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      return;
-    }
-
-    // Check if order endpoint is configured
-    if (!isEndpointConfigured) {
-      // Prototype mode: submission disabled, no false success
+      const firstField = Object.keys(formErrors)[0];
+      const element = document.getElementById(`field-${firstField}`);
+      element?.focus();
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
     setIsSubmitting(true);
-
     const normalizedPrimary = validatePhone(primaryPhone).normalized;
-    const orderPayload = {
-      product: siteConfig.productName,
-      package: selectedPackage === 'double' ? '2 Fuel Pumps' : '1 Fuel Pump',
-      quantity,
-      productTotal,
-      currency: 'NGN',
-      deliveryTerms: 'pending seller confirmation',
+
+    const result = await submitOrderToBackend({
+      packageKey: selectedPackage,
       customer: {
         fullName: fullName.trim(),
         primaryPhone: normalizedPrimary,
         altPhone: altPhone.trim() || undefined,
-        whatsappNumber: whatsappPhone.trim() || undefined,
+        whatsappPhone: whatsappPhone.trim() || undefined,
       },
       vehicle: {
         make: vehicleMake.trim(),
         model: vehicleModel.trim(),
         productionYear: vehicleYear.trim(),
-        engineTypeSize: engineType.trim() || undefined,
+        engineSize: engineSize.trim() || undefined,
         existingPartNumber: existingPartNumber.trim() || undefined,
       },
       delivery: {
-        state: state.trim(),
+        state: selectedState.trim(),
         cityTown: cityTown.trim(),
         fullAddress: fullAddress.trim(),
-        nearestLandmark: nearestLandmark.trim(),
+        nearestLandmark: nearestLandmark.trim() || undefined,
       },
-      submittedAt: new Date().toISOString(),
-    };
+    });
 
-    try {
-      const response = await fetch(siteConfig.orderEndpointUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(orderPayload),
-      });
+    setIsSubmitting(false);
 
-      if (response.ok) {
-        setServerSuccess(true);
-        // If WhatsApp ordering is configured, open wa.me
-        if (isWhatsAppConfigured) {
-          const message = encodeURIComponent(
-            `*ORDER SUBMITTED: ${siteConfig.productName}*\nPackage: ${orderPayload.package}\nCustomer: ${fullName}\nPhone: ${normalizedPrimary}\nVehicle: ${vehicleMake} ${vehicleModel} (${vehicleYear})\nState: ${state}, ${cityTown}\nAddress: ${fullAddress}\n(Sent after web order submission)`
-          );
-          try {
-            window.open(`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${message}`, '_blank');
-          } catch (err) {
-            // Ignore window.open errors in sandbox
-          }
-        }
-      } else {
-        const errorText = await response.text();
-        setServerError(`Submission failed (${response.status}). Please try again or contact the seller directly.`);
-      }
-    } catch (err: any) {
-      setServerError('Network error while submitting order. Please check your connection and retry.');
-    } finally {
-      setIsSubmitting(false);
+    if (result.success && result.orderReference) {
+      setConfirmedOrderRef(result.orderReference);
+      // The user is presented with the clear, direct 'Send Copy to WhatsApp' button on the confirmation card
+    } else {
+      setSubmitError(result.error || 'Failed to submit order. Please retry.');
     }
   };
 
-  return (
-    <section id="order-form" className="py-16 lg:py-20 bg-[#FFFFFF] text-[#292929] border-b border-neutral-200">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="text-center space-y-3 mb-10">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#292929] font-display">
-            Order Your Fuel Pump
-          </h2>
-          <p className="text-sm text-[#777777] max-w-xl mx-auto">
-            Complete your details so the seller can review your order and help confirm vehicle compatibility.
-          </p>
+  // WhatsApp order text generator
+  const generateWhatsAppOrderUrl = () => {
+    const rawNumber = config.whatsappNumber.replace(/[^0-9]/g, '');
+    const packageName = selectedPackage === 'double' ? '2 Fuel Pumps' : '1 Fuel Pump';
+    const header = confirmedOrderRef
+      ? `*NEW ORDER SUBMITTED: ${confirmedOrderRef}*`
+      : `*FRANKBLAISE DIRECT ORDER REQUEST*`;
+    const text = `${header}\nPackage: ${packageName} (${formatNaira(totalAmount)})\nCustomer: ${fullName || '(Pending name)'}\nPhone: ${primaryPhone || '(Pending phone)'}\nVehicle: ${vehicleMake || 'Make'} ${vehicleModel || 'Model'} (${vehicleYear || 'Year'})\nEngine: ${engineSize || 'N/A'}\nState: ${selectedState || 'N/A'}\nCity: ${cityTown || 'N/A'}\nAddress: ${fullAddress || 'N/A'}\n\n*Notice: Confirmation by telephone call is required before parcel dispatch.*`;
+    return `https://wa.me/${rawNumber}?text=${encodeURIComponent(text)}`;
+  };
 
-          {isWhatsAppConfigured && (
-            <div className="pt-2">
-              <a
-                href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                  `Hello FRANKBLAISE PARTS, I would like to order the ${
-                    selectedPackage === 'double' ? 'Double Pump Package (2 Pumps)' : 'Single Pump Package (1 Pump)'
-                  }. Please confirm vehicle compatibility and delivery details.`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs sm:text-sm shadow-md transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Chat or Order via WhatsApp ({currentWhatsApp})</span>
-              </a>
-            </div>
-          )}
+  return (
+    <section id="order-form" className="bg-[#F6F4EF] text-[#1B1C1F] py-16 lg:py-24 border-b border-[#D5D2CB]">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-10">
+        <div className="space-y-3">
+          <div className="text-xs font-mono uppercase tracking-widest text-[#B51222] font-bold">
+            SECTION 10 · ORDER TERMINAL
+          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold uppercase font-display tracking-tight text-[#1B1C1F]">
+            Vehicle Verification &amp; Order Form
+          </h2>
+          <p className="text-sm sm:text-base text-[#2B2D31]">
+            Please submit your vehicle and delivery details. Our automotive technician will phone you to confirm mechanical fitment before parcel dispatch.
+          </p>
         </div>
 
-        {/* Prototype Warning Banner if Endpoint is not configured */}
-        {!isEndpointConfigured && (
-          <div className="mb-8 p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex flex-col sm:flex-row items-start justify-between gap-4 text-xs sm:text-sm text-amber-900">
-            <div className="flex items-start gap-3.5">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <span className="font-bold block">
-                  Web form submission endpoint is in prototype mode.
+        {/* Reassuring Order Trust Strip */}
+        <div className="p-4 bg-[#E9E7E2] border border-[#D5D2CB] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono text-[#2B2D31]">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#B51222] shrink-0" />
+            <span>PAY ON DELIVERY · NATIONWIDE COURIER · COMPATIBILITY CHECK</span>
+          </div>
+          <a
+            href={generateWhatsAppOrderUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#B51222] hover:underline font-bold inline-flex items-center gap-1 shrink-0"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>Prefer WhatsApp? Order Directly</span>
+          </a>
+        </div>
+
+        {/* Success State — Shown ONLY upon genuine confirmed backend save */}
+        {confirmedOrderRef ? (
+          <div className="bg-white border-2 border-emerald-500 rounded-2xl p-8 sm:p-10 space-y-6 text-center shadow-md">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-xs font-mono font-bold text-emerald-800 uppercase tracking-widest block">
+                ORDER RECORDED SUCCESSFULLY
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-bold uppercase font-display text-[#1B1C1F]">
+                Reference: {confirmedOrderRef}
+              </h3>
+              <p className="text-sm text-[#2B2D31] max-w-lg mx-auto">
+                Thank you, {fullName}. Your order for the{' '}
+                <strong>
+                  {selectedPackage === 'double' ? '2 Fuel Pumps' : '1 Fuel Pump'}
+                </strong>{' '}
+                package has been logged into the seller dispatch queue.
+              </p>
+            </div>
+
+            <div className="p-4 bg-[#F6F4EF] border border-[#D5D2CB] rounded-xl max-w-md mx-auto text-left text-xs font-mono space-y-1.5 text-[#2B2D31]">
+              <div className="flex justify-between">
+                <span className="text-[#6E7075]">Order Total:</span>
+                <span className="font-bold">{formatNaira(totalAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#6E7075]">Vehicle:</span>
+                <span>
+                  {vehicleMake} {vehicleModel} ({vehicleYear})
                 </span>
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  For immediate ordering and rapid verification of your vehicle specs, contact FRANKBLAISE directly on WhatsApp.
-                </p>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#6E7075]">Destination:</span>
+                <span>
+                  {selectedState}, {cityTown}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#6E7075]">Settlement:</span>
+                <span className="text-[#B51222] font-bold">Pay on Delivery</span>
               </div>
             </div>
 
-            {isWhatsAppConfigured && (
+            <div className="pt-2 space-y-3">
+              <p className="text-xs text-[#6E7075]">
+                A seller technician will telephone {primaryPhone} shortly to confirm part fitment.
+              </p>
               <a
-                href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                  `Hello FRANKBLAISE PARTS, I want to order the FRANKBLAISE Fuel Pump Plus (${
-                    selectedPackage === 'double' ? '2 Pumps' : '1 Pump'
-                  }).`
-                )}`}
+                href={generateWhatsAppOrderUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-colors cursor-pointer"
+                className="min-tap-target inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Order on WhatsApp</span>
+                <span>Send Copy to WhatsApp for Faster Processing</span>
               </a>
-            )}
-          </div>
-        )}
-
-        {/* Server Success State (rendered ONLY upon a real 2xx response) */}
-        {serverSuccess ? (
-          <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-8 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-emerald-950 font-display">
-              Order Received Successfully
-            </h3>
-            <p className="text-sm text-emerald-900 max-w-md mx-auto">
-              Thank you, {fullName}. Your order details have been submitted. The seller will contact you via {primaryPhone} to review vehicle compatibility and arrange delivery.
-            </p>
-            {isWhatsAppConfigured && (
-              <p className="text-xs text-emerald-700">
-                A copy of your order details was opened in WhatsApp. Please note that opening WhatsApp does not replace review and confirmation by the seller.
-              </p>
-            )}
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="space-y-8 bg-[#F5F5F7] p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm">
-            {serverError && (
+          /* Actual Order Form */
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="bg-white border border-[#D5D2CB] rounded-2xl p-6 sm:p-8 space-y-8 shadow-sm"
+          >
+            {submitError && (
               <div className="p-4 bg-red-50 border border-red-300 rounded-xl flex items-start gap-3 text-xs sm:text-sm text-red-900">
-                <AlertCircle className="w-5 h-5 text-[#E32636] shrink-0" />
-                <div className="space-y-1 flex-1">
-                  <span>{serverError}</span>
-                  <div>
-                    <button
-                      type="submit"
-                      className="text-xs font-bold underline hover:no-underline text-red-800"
-                    >
-                      Click here to retry submission
-                    </button>
-                  </div>
+                <AlertCircle className="w-5 h-5 text-[#B51222] shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-bold">Submission Notice:</span>
+                  <p>{submitError}</p>
                 </div>
               </div>
             )}
 
-            {/* A. Customer Details */}
-            <fieldset className="space-y-4 border-b border-neutral-200 pb-6">
-              <legend className="text-sm font-bold uppercase tracking-wider text-[#292929] mb-2 font-display">
-                A. Customer Information
+            {/* Fieldset A: Package Selection */}
+            <fieldset className="space-y-4">
+              <legend className="text-xs font-mono font-bold uppercase tracking-wider text-[#B51222]">
+                A. CHOOSE YOUR PACKAGE <span className="text-[#B51222]">*</span>
               </legend>
 
-              <div>
-                <label htmlFor="field-fullName" className="block text-xs font-semibold text-[#292929] mb-1">
-                  Full Name <span className="text-[#E32636]">*</span>
-                </label>
-                <input
-                  id="field-fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  onBlur={() => handleBlur('fullName')}
-                  aria-invalid={Boolean(touched.fullName && errors.fullName)}
-                  aria-describedby={touched.fullName && errors.fullName ? 'error-fullName' : undefined}
-                  placeholder="e.g. Chukwuemeka Adebayo"
-                  className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] ${
-                    touched.fullName && errors.fullName ? 'border-[#E32636]' : 'border-neutral-300'
-                  }`}
-                />
-                {touched.fullName && errors.fullName && (
-                  <p id="error-fullName" className="text-xs text-[#E32636] mt-1">
-                    {errors.fullName}
-                  </p>
-                )}
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label
+                  className={`p-4 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-colors ${
+                    selectedPackage === 'single'
+                      ? 'border-[#B51222] bg-[#F6F4EF]'
+                      : 'border-[#D5D2CB] hover:border-[#6E7075]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="form-package"
+                      value="single"
+                      checked={selectedPackage === 'single'}
+                      onChange={() => onSelectPackage('single')}
+                      className="w-4 h-4 accent-[#B51222]"
+                    />
+                    <div>
+                      <span className="text-xs font-bold font-mono block text-[#1B1C1F]">
+                        ONE FUEL PUMP
+                      </span>
+                      <span className="text-xs text-[#6E7075]">12V Unit + Hardware</span>
+                    </div>
+                  </div>
+                  <span className="text-base font-bold font-mono text-[#1B1C1F]">
+                    {formatNaira(config.prices.singlePump)}
+                  </span>
+                </label>
+
+                <label
+                  className={`p-4 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-colors ${
+                    selectedPackage === 'double'
+                      ? 'border-[#B51222] bg-[#F6F4EF]'
+                      : 'border-[#D5D2CB] hover:border-[#6E7075]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="form-package"
+                      value="double"
+                      checked={selectedPackage === 'double'}
+                      onChange={() => onSelectPackage('double')}
+                      className="w-4 h-4 accent-[#B51222]"
+                    />
+                    <div>
+                      <span className="text-xs font-bold font-mono block text-[#B51222]">
+                        TWO FUEL PUMPS
+                      </span>
+                      <span className="text-xs text-[#6E7075]">Dual Pack + 2 Kits</span>
+                    </div>
+                  </div>
+                  <span className="text-base font-bold font-mono text-[#B51222]">
+                    {formatNaira(config.prices.doublePump)}
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            {/* Fieldset B: Customer Contact Data */}
+            <fieldset className="space-y-4 pt-4 border-t border-[#E9E7E2]">
+              <legend className="text-xs font-mono font-bold uppercase tracking-wider text-[#B51222]">
+                B. CUSTOMER CONTACT DATA
+              </legend>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label htmlFor="field-primaryPhone" className="block text-xs font-semibold text-[#292929] mb-1">
-                    Primary Phone Number <span className="text-[#E32636]">*</span>
+                  <label htmlFor="field-fullName" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Full Name <span className="text-[#B51222]">*</span>
+                  </label>
+                  <input
+                    id="field-fullName"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    onBlur={() => handleBlur('fullName')}
+                    aria-invalid={Boolean(touched.fullName && errors.fullName)}
+                    aria-describedby={touched.fullName && errors.fullName ? 'err-fullName' : undefined}
+                    placeholder="e.g. Chukwuemeka Adeleke"
+                    className={`w-full px-4 py-3 bg-[#F6F4EF] border rounded-lg text-sm text-[#1B1C1F] focus:outline-none focus:ring-2 focus:ring-[#B51222] ${
+                      touched.fullName && errors.fullName ? 'border-[#B51222]' : 'border-[#D5D2CB]'
+                    }`}
+                  />
+                  {touched.fullName && errors.fullName && (
+                    <p id="err-fullName" className="text-xs text-[#B51222] mt-1 font-mono">
+                      {errors.fullName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="field-primaryPhone" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Primary Phone Number <span className="text-[#B51222]">*</span>
                   </label>
                   <input
                     id="field-primaryPhone"
@@ -394,22 +438,22 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
                     onChange={(e) => setPrimaryPhone(e.target.value)}
                     onBlur={() => handleBlur('primaryPhone')}
                     aria-invalid={Boolean(touched.primaryPhone && errors.primaryPhone)}
-                    aria-describedby={touched.primaryPhone && errors.primaryPhone ? 'error-primaryPhone' : undefined}
-                    placeholder="08012345678"
-                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] font-mono ${
-                      touched.primaryPhone && errors.primaryPhone ? 'border-[#E32636]' : 'border-neutral-300'
+                    aria-describedby={touched.primaryPhone && errors.primaryPhone ? 'err-primaryPhone' : undefined}
+                    placeholder="08012345678 or +234..."
+                    className={`w-full px-4 py-3 bg-[#F6F4EF] border rounded-lg text-sm text-[#1B1C1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#B51222] ${
+                      touched.primaryPhone && errors.primaryPhone ? 'border-[#B51222]' : 'border-[#D5D2CB]'
                     }`}
                   />
                   {touched.primaryPhone && errors.primaryPhone && (
-                    <p id="error-primaryPhone" className="text-xs text-[#E32636] mt-1">
+                    <p id="err-primaryPhone" className="text-xs text-[#B51222] mt-1 font-mono">
                       {errors.primaryPhone}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="field-altPhone" className="block text-xs font-semibold text-[#292929] mb-1">
-                    Alternative Phone <span className="text-neutral-400 font-normal">(Optional)</span>
+                  <label htmlFor="field-altPhone" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Alternative Phone (Optional)
                   </label>
                   <input
                     id="field-altPhone"
@@ -418,47 +462,44 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
                     onChange={(e) => setAltPhone(e.target.value)}
                     onBlur={() => handleBlur('altPhone')}
                     aria-invalid={Boolean(touched.altPhone && errors.altPhone)}
-                    aria-describedby={touched.altPhone && errors.altPhone ? 'error-altPhone' : undefined}
-                    placeholder="08198765432"
-                    className="w-full px-4 py-3 bg-white border border-neutral-300 rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] font-mono"
+                    aria-describedby={touched.altPhone && errors.altPhone ? 'err-altPhone' : undefined}
+                    placeholder="Second phone number if reachable"
+                    className="w-full px-4 py-3 bg-[#F6F4EF] border border-[#D5D2CB] rounded-lg text-sm text-[#1B1C1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#B51222]"
                   />
                   {touched.altPhone && errors.altPhone && (
-                    <p id="error-altPhone" className="text-xs text-[#E32636] mt-1">
+                    <p id="err-altPhone" className="text-xs text-[#B51222] mt-1 font-mono">
                       {errors.altPhone}
                     </p>
                   )}
                 </div>
-              </div>
 
-              <div>
-                <label htmlFor="field-whatsappPhone" className="block text-xs font-semibold text-[#292929] mb-1">
-                  WhatsApp Number <span className="text-neutral-400 font-normal">(Optional)</span>
-                </label>
-                <input
-                  id="field-whatsappPhone"
-                  type="tel"
-                  value={whatsappPhone}
-                  onChange={(e) => setWhatsappPhone(e.target.value)}
-                  onBlur={() => handleBlur('whatsappPhone')}
-                  placeholder="08012345678"
-                  className="w-full px-4 py-3 bg-white border border-neutral-300 rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] font-mono"
-                />
+                <div>
+                  <label htmlFor="field-whatsappPhone" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    WhatsApp Number (Optional)
+                  </label>
+                  <input
+                    id="field-whatsappPhone"
+                    type="tel"
+                    value={whatsappPhone}
+                    onChange={(e) => setWhatsappPhone(e.target.value)}
+                    onBlur={() => handleBlur('whatsappPhone')}
+                    placeholder="If different from primary phone"
+                    className="w-full px-4 py-3 bg-[#F6F4EF] border border-[#D5D2CB] rounded-lg text-sm text-[#1B1C1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#B51222]"
+                  />
+                </div>
               </div>
             </fieldset>
 
-            {/* B. Vehicle Details */}
-            <fieldset className="space-y-4 border-b border-neutral-200 pb-6">
-              <legend className="text-sm font-bold uppercase tracking-wider text-[#292929] mb-1 font-display">
-                B. Vehicle Details
+            {/* Fieldset C: Vehicle Compatibility Data */}
+            <fieldset className="space-y-4 pt-4 border-t border-[#E9E7E2]">
+              <legend className="text-xs font-mono font-bold uppercase tracking-wider text-[#B51222]">
+                C. VEHICLE COMPATIBILITY DATA
               </legend>
-              <p className="text-xs text-[#777777] mb-3">
-                Vehicle information helps the seller check whether the replacement fuel pump is suitable for your vehicle.
-              </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <div>
-                  <label htmlFor="field-vehicleMake" className="block text-xs font-semibold text-[#292929] mb-1">
-                    Vehicle Make <span className="text-[#E32636]">*</span>
+                  <label htmlFor="field-vehicleMake" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Vehicle Make <span className="text-[#B51222]">*</span>
                   </label>
                   <input
                     id="field-vehicleMake"
@@ -467,22 +508,19 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
                     onChange={(e) => setVehicleMake(e.target.value)}
                     onBlur={() => handleBlur('vehicleMake')}
                     aria-invalid={Boolean(touched.vehicleMake && errors.vehicleMake)}
-                    aria-describedby={touched.vehicleMake && errors.vehicleMake ? 'error-vehicleMake' : undefined}
                     placeholder="e.g. Toyota"
-                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] ${
-                      touched.vehicleMake && errors.vehicleMake ? 'border-[#E32636]' : 'border-neutral-300'
+                    className={`w-full px-4 py-3 bg-[#F6F4EF] border rounded-lg text-sm text-[#1B1C1F] focus:outline-none focus:ring-2 focus:ring-[#B51222] ${
+                      touched.vehicleMake && errors.vehicleMake ? 'border-[#B51222]' : 'border-[#D5D2CB]'
                     }`}
                   />
                   {touched.vehicleMake && errors.vehicleMake && (
-                    <p id="error-vehicleMake" className="text-xs text-[#E32636] mt-1">
-                      {errors.vehicleMake}
-                    </p>
+                    <p className="text-xs text-[#B51222] mt-1 font-mono">{errors.vehicleMake}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="field-vehicleModel" className="block text-xs font-semibold text-[#292929] mb-1">
-                    Vehicle Model <span className="text-[#E32636]">*</span>
+                  <label htmlFor="field-vehicleModel" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Vehicle Model <span className="text-[#B51222]">*</span>
                   </label>
                   <input
                     id="field-vehicleModel"
@@ -491,22 +529,19 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
                     onChange={(e) => setVehicleModel(e.target.value)}
                     onBlur={() => handleBlur('vehicleModel')}
                     aria-invalid={Boolean(touched.vehicleModel && errors.vehicleModel)}
-                    aria-describedby={touched.vehicleModel && errors.vehicleModel ? 'error-vehicleModel' : undefined}
-                    placeholder="e.g. Camry"
-                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] ${
-                      touched.vehicleModel && errors.vehicleModel ? 'border-[#E32636]' : 'border-neutral-300'
+                    placeholder="e.g. Corolla / Camry"
+                    className={`w-full px-4 py-3 bg-[#F6F4EF] border rounded-lg text-sm text-[#1B1C1F] focus:outline-none focus:ring-2 focus:ring-[#B51222] ${
+                      touched.vehicleModel && errors.vehicleModel ? 'border-[#B51222]' : 'border-[#D5D2CB]'
                     }`}
                   />
                   {touched.vehicleModel && errors.vehicleModel && (
-                    <p id="error-vehicleModel" className="text-xs text-[#E32636] mt-1">
-                      {errors.vehicleModel}
-                    </p>
+                    <p className="text-xs text-[#B51222] mt-1 font-mono">{errors.vehicleModel}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="field-vehicleYear" className="block text-xs font-semibold text-[#292929] mb-1">
-                    Production Year <span className="text-[#E32636]">*</span>
+                  <label htmlFor="field-vehicleYear" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Year (1980–{currentYear}) <span className="text-[#B51222]">*</span>
                   </label>
                   <select
                     id="field-vehicleYear"
@@ -514,145 +549,90 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
                     onChange={(e) => setVehicleYear(e.target.value)}
                     onBlur={() => handleBlur('vehicleYear')}
                     aria-invalid={Boolean(touched.vehicleYear && errors.vehicleYear)}
-                    aria-describedby={touched.vehicleYear && errors.vehicleYear ? 'error-vehicleYear' : undefined}
-                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] focus:outline-none focus:ring-2 focus:ring-[#E32636] ${
-                      touched.vehicleYear && errors.vehicleYear ? 'border-[#E32636]' : 'border-neutral-300'
+                    className={`w-full px-4 py-3 bg-[#F6F4EF] border rounded-lg text-sm text-[#1B1C1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#B51222] ${
+                      touched.vehicleYear && errors.vehicleYear ? 'border-[#B51222]' : 'border-[#D5D2CB]'
                     }`}
                   >
                     <option value="">Select Year</option>
                     {years.map((y) => (
-                      <option key={y} value={y.toString()}>
+                      <option key={y} value={y}>
                         {y}
                       </option>
                     ))}
                   </select>
                   {touched.vehicleYear && errors.vehicleYear && (
-                    <p id="error-vehicleYear" className="text-xs text-[#E32636] mt-1">
-                      {errors.vehicleYear}
-                    </p>
+                    <p className="text-xs text-[#B51222] mt-1 font-mono">{errors.vehicleYear}</p>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
                 <div>
-                  <label htmlFor="field-engineType" className="block text-xs font-semibold text-[#292929] mb-1">
-                    Engine Type / Size <span className="text-neutral-400 font-normal">(Optional)</span>
+                  <label htmlFor="field-engineSize" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Engine Size / Code (Optional)
                   </label>
                   <input
-                    id="field-engineType"
+                    id="field-engineSize"
                     type="text"
-                    value={engineType}
-                    onChange={(e) => setEngineType(e.target.value)}
-                    placeholder="e.g. 2.4L 4-Cylinder, 3.5L V6"
-                    className="w-full px-4 py-3 bg-white border border-neutral-300 rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636]"
+                    value={engineSize}
+                    onChange={(e) => setEngineSize(e.target.value)}
+                    placeholder="e.g. 1.8L 4-Cyl or 2.4L V6"
+                    className="w-full px-4 py-3 bg-[#F6F4EF] border border-[#D5D2CB] rounded-lg text-sm text-[#1B1C1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#B51222]"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="field-existingPartNumber" className="block text-xs font-semibold text-[#292929] mb-1">
-                    Existing Fuel Pump Part Number <span className="text-neutral-400 font-normal">(Optional)</span>
+                  <label htmlFor="field-partNumber" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Existing Pump OEM Part # (Optional)
                   </label>
                   <input
-                    id="field-existingPartNumber"
+                    id="field-partNumber"
                     type="text"
                     value={existingPartNumber}
                     onChange={(e) => setExistingPartNumber(e.target.value)}
-                    placeholder="e.g. 23221-0D010 or sample markings"
-                    className="w-full px-4 py-3 bg-white border border-neutral-300 rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] font-mono"
+                    placeholder="e.g. 23220-0C050"
+                    className="w-full px-4 py-3 bg-[#F6F4EF] border border-[#D5D2CB] rounded-lg text-sm text-[#1B1C1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#B51222]"
                   />
                 </div>
               </div>
             </fieldset>
 
-            {/* C. Package Selection */}
-            <fieldset className="space-y-3 border-b border-neutral-200 pb-6">
-              <legend className="text-sm font-bold uppercase tracking-wider text-[#292929] mb-2 font-display">
-                C. Package Selection
+            {/* Fieldset D: Delivery Destination */}
+            <fieldset className="space-y-4 pt-4 border-t border-[#E9E7E2]">
+              <legend className="text-xs font-mono font-bold uppercase tracking-wider text-[#B51222]">
+                D. NIGERIAN DELIVERY ADDRESS
               </legend>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label className={`p-4 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all ${
-                  selectedPackage === 'single'
-                    ? 'border-[#E32636] bg-white shadow-sm'
-                    : 'border-neutral-200 bg-white/60 hover:bg-white'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="form-package"
-                      value="single"
-                      checked={selectedPackage === 'single'}
-                      onChange={() => onSelectPackage('single')}
-                      className="w-4 h-4 text-[#E32636] accent-[#E32636]"
-                    />
-                    <span className="text-xs sm:text-sm font-bold text-[#292929]">
-                      1 Fuel Pump — {formatNaira(adminData.singlePrice)}
-                    </span>
-                  </div>
-                </label>
-
-                <label className={`p-4 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all ${
-                  selectedPackage === 'double'
-                    ? 'border-[#E32636] bg-white shadow-sm'
-                    : 'border-neutral-200 bg-white/60 hover:bg-white'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="form-package"
-                      value="double"
-                      checked={selectedPackage === 'double'}
-                      onChange={() => onSelectPackage('double')}
-                      className="w-4 h-4 text-[#E32636] accent-[#E32636]"
-                    />
-                    <span className="text-xs sm:text-sm font-bold text-[#292929]">
-                      2 Fuel Pumps — {formatNaira(adminData.doublePrice)}
-                    </span>
-                  </div>
-                </label>
-              </div>
-            </fieldset>
-
-            {/* D. Delivery Details */}
-            <fieldset className="space-y-4 border-b border-neutral-200 pb-6">
-              <legend className="text-sm font-bold uppercase tracking-wider text-[#292929] mb-2 font-display">
-                D. Delivery Destination in Nigeria
-              </legend>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label htmlFor="field-state" className="block text-xs font-semibold text-[#292929] mb-1">
-                    State <span className="text-[#E32636]">*</span>
+                  <label htmlFor="field-state" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    State (36 States + FCT) <span className="text-[#B51222]">*</span>
                   </label>
                   <select
                     id="field-state"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
+                    value={selectedState}
+                    onChange={(e) => setSelectedState(e.target.value)}
                     onBlur={() => handleBlur('state')}
                     aria-invalid={Boolean(touched.state && errors.state)}
-                    aria-describedby={touched.state && errors.state ? 'error-state' : undefined}
-                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] focus:outline-none focus:ring-2 focus:ring-[#E32636] ${
-                      touched.state && errors.state ? 'border-[#E32636]' : 'border-neutral-300'
+                    className={`w-full px-4 py-3 bg-[#F6F4EF] border rounded-lg text-sm text-[#1B1C1F] focus:outline-none focus:ring-2 focus:ring-[#B51222] ${
+                      touched.state && errors.state ? 'border-[#B51222]' : 'border-[#D5D2CB]'
                     }`}
                   >
-                    <option value="">Select State</option>
-                    {nigerianStates.map((st) => (
-                      <option key={st} value={st}>
-                        {st}
+                    <option value="">Select Delivery State</option>
+                    {NIGERIAN_STATES.map((st) => (
+                      <option key={st.name} value={st.name}>
+                        {st.name}
                       </option>
                     ))}
                   </select>
                   {touched.state && errors.state && (
-                    <p id="error-state" className="text-xs text-[#E32636] mt-1">
-                      {errors.state}
-                    </p>
+                    <p className="text-xs text-[#B51222] mt-1 font-mono">{errors.state}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="field-cityTown" className="block text-xs font-semibold text-[#292929] mb-1">
-                    City / Town / LGA <span className="text-[#E32636]">*</span>
+                  <label htmlFor="field-cityTown" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    City / Town / LGA <span className="text-[#B51222]">*</span>
                   </label>
                   <input
                     id="field-cityTown"
@@ -661,23 +641,20 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
                     onChange={(e) => setCityTown(e.target.value)}
                     onBlur={() => handleBlur('cityTown')}
                     aria-invalid={Boolean(touched.cityTown && errors.cityTown)}
-                    aria-describedby={touched.cityTown && errors.cityTown ? 'error-cityTown' : undefined}
-                    placeholder="e.g. Ikeja, Wuse 2, Port Harcourt GRA"
-                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] ${
-                      touched.cityTown && errors.cityTown ? 'border-[#E32636]' : 'border-neutral-300'
+                    placeholder="e.g. Ikeja, GRA, Wuse 2"
+                    className={`w-full px-4 py-3 bg-[#F6F4EF] border rounded-lg text-sm text-[#1B1C1F] focus:outline-none focus:ring-2 focus:ring-[#B51222] ${
+                      touched.cityTown && errors.cityTown ? 'border-[#B51222]' : 'border-[#D5D2CB]'
                     }`}
                   />
                   {touched.cityTown && errors.cityTown && (
-                    <p id="error-cityTown" className="text-xs text-[#E32636] mt-1">
-                      {errors.cityTown}
-                    </p>
+                    <p className="text-xs text-[#B51222] mt-1 font-mono">{errors.cityTown}</p>
                   )}
                 </div>
               </div>
 
               <div>
-                <label htmlFor="field-fullAddress" className="block text-xs font-semibold text-[#292929] mb-1">
-                  Full Delivery Address <span className="text-[#E32636]">*</span>
+                <label htmlFor="field-fullAddress" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                  Full Street Address <span className="text-[#B51222]">*</span>
                 </label>
                 <input
                   id="field-fullAddress"
@@ -686,98 +663,69 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
                   onChange={(e) => setFullAddress(e.target.value)}
                   onBlur={() => handleBlur('fullAddress')}
                   aria-invalid={Boolean(touched.fullAddress && errors.fullAddress)}
-                  aria-describedby={touched.fullAddress && errors.fullAddress ? 'error-fullAddress' : undefined}
-                  placeholder="Street name, house/shop number, building description"
-                  className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] ${
-                    touched.fullAddress && errors.fullAddress ? 'border-[#E32636]' : 'border-neutral-300'
+                  placeholder="Street name, house/workshop number, area description"
+                  className={`w-full px-4 py-3 bg-[#F6F4EF] border rounded-lg text-sm text-[#1B1C1F] focus:outline-none focus:ring-2 focus:ring-[#B51222] ${
+                    touched.fullAddress && errors.fullAddress ? 'border-[#B51222]' : 'border-[#D5D2CB]'
                   }`}
                 />
                 {touched.fullAddress && errors.fullAddress && (
-                  <p id="error-fullAddress" className="text-xs text-[#E32636] mt-1">
-                    {errors.fullAddress}
-                  </p>
+                  <p className="text-xs text-[#B51222] mt-1 font-mono">{errors.fullAddress}</p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="field-nearestLandmark" className="block text-xs font-semibold text-[#292929] mb-1">
-                  Nearest Bus Stop / Landmark <span className="text-[#E32636]">*</span>
+                <label htmlFor="field-landmark" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                  Nearest Landmark / Bus Stop (Optional)
                 </label>
                 <input
-                  id="field-nearestLandmark"
+                  id="field-landmark"
                   type="text"
                   value={nearestLandmark}
                   onChange={(e) => setNearestLandmark(e.target.value)}
-                  onBlur={() => handleBlur('nearestLandmark')}
-                  aria-invalid={Boolean(touched.nearestLandmark && errors.nearestLandmark)}
-                  aria-describedby={touched.nearestLandmark && errors.nearestLandmark ? 'error-nearestLandmark' : undefined}
-                  placeholder="e.g. Opposite Total Filling Station, near Central Mosque"
-                  className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-[#292929] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#E32636] ${
-                    touched.nearestLandmark && errors.nearestLandmark ? 'border-[#E32636]' : 'border-neutral-300'
-                  }`}
+                  placeholder="e.g. Opposite Total Energies, near central market gate"
+                  className="w-full px-4 py-3 bg-[#F6F4EF] border border-[#D5D2CB] rounded-lg text-sm text-[#1B1C1F] focus:outline-none focus:ring-2 focus:ring-[#B51222]"
                 />
-                {touched.nearestLandmark && errors.nearestLandmark && (
-                  <p id="error-nearestLandmark" className="text-xs text-[#E32636] mt-1">
-                    {errors.nearestLandmark}
-                  </p>
-                )}
               </div>
             </fieldset>
 
-            {/* E. Order Summary */}
-            <div className="bg-white rounded-2xl p-5 border border-neutral-200 space-y-2.5 text-xs sm:text-sm">
-              <div className="font-bold uppercase tracking-wider text-[#292929] pb-2 border-b border-neutral-200 font-display">
-                E. Order Summary
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-[#777777]">Selected package:</span>
-                <span className="font-bold text-[#292929]">
-                  {selectedPackage === 'double' ? '2 Fuel Pumps' : '1 Fuel Pump'}
+            {/* Recalculated Order Summary Strip */}
+            <div className="p-5 bg-[#E9E7E2] border border-[#D5D2CB] rounded-xl space-y-2 text-xs font-mono text-[#2B2D31]">
+              <div className="flex justify-between items-center text-sm font-bold border-b border-[#D5D2CB] pb-2">
+                <span className="uppercase text-[#1B1C1F]">Recalculated Total (NGN)</span>
+                <span className="text-xl text-[#B51222] tabular-nums font-mono">
+                  {formatNaira(totalAmount)}
                 </span>
               </div>
-
               <div className="flex justify-between">
-                <span className="text-[#777777]">Quantity:</span>
-                <span className="font-bold text-[#292929]">{quantity}</span>
+                <span>Quantity:</span>
+                <span>{quantity} Unit{quantity > 1 ? 's' : ''}</span>
               </div>
-
               <div className="flex justify-between">
-                <span className="text-[#777777]">Product total:</span>
-                <span className="font-bold text-[#292929] font-mono tabular-nums">
-                  {formatNaira(productTotal)}
-                </span>
+                <span>Delivery:</span>
+                <span className="text-emerald-700 font-semibold">Included</span>
               </div>
-
               <div className="flex justify-between">
-                <span className="text-[#777777]">Delivery terms:</span>
-                <span className="italic text-[#777777]">
-                  pending seller confirmation
-                </span>
-              </div>
-
-              <div className="flex justify-between items-baseline pt-2 border-t border-neutral-200 text-sm sm:text-base font-bold">
-                <span className="text-[#292929]">Final total:</span>
-                <span className="text-[#E32636] font-mono tabular-nums text-lg sm:text-xl">
-                  {formatNaira(finalTotal)}
-                </span>
+                <span>Payment:</span>
+                <span>Pay on Delivery</span>
               </div>
             </div>
 
-            {/* Submission Button */}
+            {/* Submit Button */}
             <div>
               <button
                 type="submit"
-                disabled={isSubmitting || !isEndpointConfigured}
-                className="min-tap-target w-full py-4 px-6 bg-[#E32636] hover:bg-[#B51222] text-white font-bold text-sm sm:text-base rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSubmitting || !isFirebaseConfigured}
+                className="min-tap-target w-full py-4 px-6 bg-[#B51222] hover:bg-[#8F0E1B] text-white font-bold text-sm sm:text-base uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Submitting Order...</span>
+                    <span>RECORDING ORDER ON SERVER...</span>
                   </>
+                ) : !isFirebaseConfigured ? (
+                  <span>ORDER FORM READY — CONNECT CLOUD BACKEND TO SUBMIT</span>
                 ) : (
-                  <span>SUBMIT YOUR ORDER</span>
+                  <span>SUBMIT ORDER FOR COMPATIBILITY REVIEW</span>
                 )}
               </button>
             </div>

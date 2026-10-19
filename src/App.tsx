@@ -1,26 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
-import { BenefitCards } from './components/BenefitCards';
-import { ProblemSection } from './components/ProblemSection';
-import { ProductVideoSection } from './components/ProductVideoSection';
-import { ProductGallerySection } from './components/ProductGallerySection';
+import { EngineeringBreakdownSection } from './components/EngineeringBreakdownSection';
 import { SpecificationsSection } from './components/SpecificationsSection';
-import { FuelSystemDiagram } from './components/FuelSystemDiagram';
-import { WarrantyInfoSection } from './components/WarrantyInfoSection';
-import { CustomerExperiencesSection } from './components/CustomerExperiencesSection';
+import { ProductGallerySection } from './components/ProductGallerySection';
+import { ProductVideoSection } from './components/ProductVideoSection';
 import { PackagesSection, PackageSelection } from './components/PackagesSection';
+import { CompatibilitySection } from './components/CompatibilitySection';
+import { CustomerExperiencesSection } from './components/CustomerExperiencesSection';
 import { DeliveryAndPaymentSection } from './components/DeliveryAndPaymentSection';
 import { OrderFormSection } from './components/OrderFormSection';
-import { FinalCTASection } from './components/FinalCTASection';
 import { FooterSection } from './components/FooterSection';
 import { FloatingElements } from './components/FloatingElements';
-import { AdminPortalModal } from './components/AdminPortalModal';
+import { AdminDashboard } from './components/AdminDashboard';
 
 export default function App() {
   const [selectedPackage, setSelectedPackage] = useState<PackageSelection>('single');
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isAdminView, setIsAdminView] = useState(() => {
+    return (
+      window.location.hash === '#admin' ||
+      window.location.pathname.startsWith('/admin')
+    );
+  });
+
+  // Listen to hash changes for #admin navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      setIsAdminView(
+        window.location.hash === '#admin' ||
+        window.location.pathname.startsWith('/admin')
+      );
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const openAdmin = () => {
+    window.location.hash = 'admin';
+    setIsAdminView(true);
+  };
+
+  const closeAdmin = () => {
+    window.location.hash = '';
+    setIsAdminView(false);
+  };
 
   const scrollToOrderForm = () => {
     const element = document.getElementById('order-form');
@@ -29,86 +54,84 @@ export default function App() {
     }
   };
 
-  const scrollToCompatibility = () => {
+  const scrollToSpecifications = () => {
     const element = document.getElementById('specifications');
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
+  // Render Admin Console when in admin route
+  if (isAdminView) {
+    return <AdminDashboard onBackToSite={closeAdmin} />;
+  }
+
   return (
-    <div id="top" className="min-h-screen bg-[#0B0B0D] text-white flex flex-col font-sans selection:bg-[#E32636] selection:text-white">
+    <div id="top" className="min-h-screen bg-[#F6F4EF] text-[#1B1C1F] flex flex-col font-sans selection:bg-[#B51222] selection:text-white">
+      {/* Skip to Main Content Link for Keyboard Accessibility */}
+      <a
+        href="#order-form"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#B51222] focus:text-white focus:font-mono focus:text-xs focus:rounded focus:outline-none"
+      >
+        Skip to Order Terminal
+      </a>
+
       {/* 1. ANNOUNCEMENT BAR */}
       <AnnouncementBar />
 
-      {/* 2. HEADER */}
+      {/* 2. TOP NAVIGATION BAR */}
       <Header onOrderClick={scrollToOrderForm} />
 
-      {/* MAIN CONTENT */}
+      {/* MAIN TECHNICAL PRODUCT CATALOGUE */}
       <main className="flex-1">
-        {/* 3. HERO (dark) */}
+        {/* 3. HERO (Dominant Genuine Photo & Technical Proposition) */}
         <HeroSection
           onOrderClick={scrollToOrderForm}
-          onCheckCompatibility={scrollToCompatibility}
+          onExploreClick={scrollToSpecifications}
         />
 
-        {/* 4. BENEFIT CARDS */}
-        <BenefitCards />
+        {/* 4. SECTION 02: ENGINEERING BREAKDOWN & DIAGRAM */}
+        <EngineeringBreakdownSection />
 
-        {/* 5. PROBLEM SECTION */}
-        <ProblemSection />
-
-        {/* 6. PRODUCT VIDEO */}
-        <ProductVideoSection onOrderClick={scrollToOrderForm} />
-
-        {/* 7. PRODUCT GALLERY */}
-        <ProductGallerySection />
-
-        {/* 8. SPECIFICATIONS */}
+        {/* 5. SECTION 03: VERIFIED SPECIFICATIONS SHEET & FAQS */}
         <SpecificationsSection />
 
-        {/* 9. FUEL SYSTEM DIAGRAM */}
-        <FuelSystemDiagram />
+        {/* 6. SECTION 04: PRODUCT VERIFICATION GALLERY (Lightbox & Zoom) */}
+        <ProductGallerySection />
 
-        {/* 10. WARRANTY */}
-        <WarrantyInfoSection />
+        {/* 7. SECTION 05: BENCH VIDEO DEMONSTRATION */}
+        <ProductVideoSection onOrderClick={scrollToOrderForm} />
 
-        {/* 11. CUSTOMER EXPERIENCES */}
-        <CustomerExperiencesSection onOpenAdminPortal={() => setIsAdminOpen(true)} />
-
-        {/* 12. PACKAGES */}
+        {/* 8. SECTION 06: COMMERCIAL PACKAGES */}
         <PackagesSection
           selectedPackage={selectedPackage}
           onSelectPackage={setSelectedPackage}
           onScrollToForm={scrollToOrderForm}
         />
 
-        {/* 13. DELIVERY AND PAYMENT */}
+        {/* 9. SECTION 07: FITMENT & COMPATIBILITY PROTOCOL */}
+        <CompatibilitySection onScrollToForm={scrollToOrderForm} />
+
+        {/* 10. SECTION 08: VERIFIED BUYER EXPERIENCES (Hidden if 0 exist) */}
+        <CustomerExperiencesSection />
+
+        {/* 11. SECTION 09: LOGISTICS & PAYMENT PROTOCOL */}
         <DeliveryAndPaymentSection />
 
-        {/* 14. ORDER FORM */}
+        {/* 12. SECTION 10: VEHICLE VERIFICATION ORDER TERMINAL */}
         <OrderFormSection
           selectedPackage={selectedPackage}
           onSelectPackage={setSelectedPackage}
         />
-
-        {/* 15. FINAL CTA */}
-        <FinalCTASection onOrderClick={scrollToOrderForm} />
       </main>
 
-      {/* 16. FOOTER */}
-      <FooterSection onOpenAdminPortal={() => setIsAdminOpen(true)} />
+      {/* 13. TECHNICAL FOOTER WITH ADMIN PORTAL LINK */}
+      <FooterSection onOpenAdmin={openAdmin} />
 
-      {/* FLOATING ELEMENTS (WhatsApp button if configured, Sticky bottom bar on mobile) */}
+      {/* 14. FLOATING ELEMENTS (WhatsApp action & Mobile sticky order bar) */}
       <FloatingElements
         selectedPackage={selectedPackage}
         onOrderClick={scrollToOrderForm}
-      />
-
-      {/* SELLER ADMIN PORTAL MODAL */}
-      <AdminPortalModal
-        isOpen={isAdminOpen}
-        onClose={() => setIsAdminOpen(false)}
       />
     </div>
   );

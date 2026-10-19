@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "Automotive replacement fuel pump customer order",
+      "type": "object",
+      "properties": {
+        "orderReference": {
+          "type": "string",
+          "description": "Unique reference code FB-YYMMDD-XXXX",
+          "maxLength": 64
+        },
+        "packageKey": {
+          "type": "string",
+          "description": "Selected package identifier ('single' or 'double')"
+        },
+        "packageName": {
+          "type": "string",
+          "description": "Display package name"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Number of pumps ordered"
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "Unit price in NGN"
+        },
+        "productTotal": {
+          "type": "number",
+          "description": "Total order amount in NGN"
+        },
+        "customer": {
+          "type": "object",
+          "description": "Customer contact info"
+        },
+        "vehicle": {
+          "type": "object",
+          "description": "Vehicle fitment details"
+        },
+        "delivery": {
+          "type": "object",
+          "description": "Destination address and state"
+        },
+        "status": {
+          "type": "string",
+          "description": "Order processing status",
+          "enum": ["New", "Contacted", "Confirmed", "Dispatched", "Delivered", "Cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of order submission"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Internal dispatch and fitment verification notes"
+        }
+      },
+      "required": ["orderReference", "packageKey", "quantity", "unitPrice", "productTotal", "customer", "vehicle", "delivery", "status", "createdAt"]
+    },
+    "ProductConfig": {
+      "title": "ProductConfig",
+      "description": "Authoritative product configuration, pricing and specifications",
+      "type": "object",
+      "properties": {
+        "prices": {
+          "type": "object",
+          "description": "Configured commercial package prices"
+        },
+        "headline": {
+          "type": "string",
+          "description": "Product display headline",
+          "maxLength": 300
+        },
+        "factualOverview": {
+          "type": "string",
+          "description": "Factual engineering overview",
+          "maxLength": 2000
+        },
+        "whatsappNumber": {
+          "type": "string",
+          "description": "Seller WhatsApp alert and support number",
+          "maxLength": 50
+        },
+        "specs": {
+          "type": "object",
+          "description": "Technical specifications"
+        },
+        "delivery": {
+          "type": "object",
+          "description": "Logistics and payment policies"
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Whether the public storefront is active"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer order queue for verification and dispatch"
+    },
+    "/product_config/{configId}": {
+      "schema": "ProductConfig",
+      "description": "Authoritative pricing and specifications document"
+    }
+  }
+}

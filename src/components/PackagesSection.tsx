@@ -1,7 +1,7 @@
 import React from 'react';
+import { useProductConfig } from '../hooks/useProductConfig';
 import { formatNaira } from '../config/site';
-import { useAdminData } from '../hooks/useAdminData';
-import { Check } from 'lucide-react';
+import { Check, ArrowDown } from 'lucide-react';
 
 export type PackageSelection = 'single' | 'double';
 
@@ -16,155 +16,187 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({
   onSelectPackage,
   onScrollToForm,
 }) => {
-  const adminData = useAdminData();
+  const config = useProductConfig();
 
-  const handleSelect = (pkg: PackageSelection) => {
+  const handleSelectAndScroll = (pkg: PackageSelection) => {
     onSelectPackage(pkg);
     onScrollToForm();
   };
 
   return (
-    <section id="packages" className="py-16 lg:py-20 bg-[#FFFFFF] text-[#292929] border-b border-neutral-200">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="text-center space-y-3 mb-12">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#292929] font-display">
-            Choose Your Fuel Pump Package
+    <section id="packages" className="bg-[#E9E7E2] text-[#1B1C1F] py-16 lg:py-24 border-b border-[#D5D2CB]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-12">
+        {/* Section Header */}
+        <div className="space-y-3">
+          <div className="text-xs font-mono uppercase tracking-widest text-[#B51222] font-bold">
+            SECTION 06 · COMMERCIAL PACKAGES
+          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold uppercase font-display tracking-tight text-[#1B1C1F]">
+            Package Configuration &amp; Pricing
           </h2>
-          <p className="text-sm text-[#777777]">
-            Select the quantity you require for your vehicle.
+          <p className="text-sm sm:text-base text-[#2B2D31]">
+            Select your required quantity. Package selection updates your order terminal below. No invented deadlines or deceptive discounts.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch mb-8">
-          {/* Card 1: 1 FUEL PUMP */}
+        {/* Package Grid (2 Symmetrical Technical Cards) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+          {/* PACKAGE A: 1 FUEL PUMP */}
           <div
             onClick={() => onSelectPackage('single')}
             className={`rounded-2xl p-6 sm:p-8 border-2 transition-all cursor-pointer flex flex-col justify-between ${
               selectedPackage === 'single'
-                ? 'border-[#E32636] bg-[#F5F5F7] shadow-md'
-                : 'border-neutral-200 bg-white hover:border-neutral-300'
+                ? 'border-[#B51222] bg-white shadow-md ring-2 ring-[#B51222]/10'
+                : 'border-[#D5D2CB] bg-white/70 hover:bg-white hover:border-[#6E7075]'
             }`}
           >
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#777777]">
-                  Single Package
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-[#E9E7E2] pb-3">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#6E7075]">
+                  PACKAGE A · SINGLE UNIT
                 </span>
                 <input
                   type="radio"
-                  name="package-select"
+                  name="package-choice"
                   checked={selectedPackage === 'single'}
                   onChange={() => onSelectPackage('single')}
-                  className="w-4 h-4 text-[#E32636] accent-[#E32636]"
-                  aria-label="1 Fuel Pump"
+                  aria-label="Select Package A: 1 Fuel Pump"
+                  className="w-4 h-4 accent-[#B51222]"
                 />
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-black text-[#292929] font-display mb-2">
-                1 FUEL PUMP
-              </h3>
-
-              <div className="mb-6">
-                <span className="text-3xl sm:text-4xl font-black text-[#292929] font-mono tabular-nums">
-                  {formatNaira(adminData.singlePrice)}
-                </span>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold uppercase font-display text-[#1B1C1F]">
+                  ONE FUEL PUMP
+                </h3>
+                <div className="mt-2">
+                  <span className="text-3xl sm:text-4xl font-bold font-mono tabular-nums text-[#1B1C1F]">
+                    {formatNaira(config.prices.singlePump)}
+                  </span>
+                </div>
               </div>
 
-              <ul className="space-y-2 text-xs sm:text-sm text-[#777777] mb-6">
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-[#E32636] shrink-0 mt-0.5" />
-                  <span>1x Electric Fuel Pump Unit</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-[#E32636] shrink-0 mt-0.5" />
-                  <span>Delivery arrangement confirmed by seller</span>
-                </li>
-              </ul>
+              <div className="space-y-3 pt-4 border-t border-[#E9E7E2] text-xs sm:text-sm text-[#2B2D31]">
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>1x FRANKBLAISE Electric Fuel Pump Unit (12V)</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>1x Micron Inlet Strainer Filter Sock</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>1x Submersible Rubber Fuel Hose &amp; Clamps</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>1x 2-Pin Electrical Pigtail Wiring Harness</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>Telephone vehicle fitment verification before dispatch</span>
+                </div>
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSelect('single');
-              }}
-              className={`min-tap-target w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer text-center ${
-                selectedPackage === 'single'
-                  ? 'bg-[#E32636] text-white hover:bg-[#B51222]'
-                  : 'bg-[#151518] text-white hover:bg-neutral-800'
-              }`}
-            >
-              SELECT THIS PACKAGE
-            </button>
+            <div className="pt-8">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelectAndScroll('single');
+                }}
+                className={`min-tap-target w-full py-3.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center flex items-center justify-center gap-2 ${
+                  selectedPackage === 'single'
+                    ? 'bg-[#B51222] text-white hover:bg-[#8F0E1B]'
+                    : 'bg-[#1B1C1F] text-white hover:bg-[#2B2D31]'
+                }`}
+              >
+                <span>SELECT PACKAGE A</span>
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          {/* Card 2: 2 FUEL PUMPS */}
+          {/* PACKAGE B: 2 FUEL PUMPS */}
           <div
             onClick={() => onSelectPackage('double')}
             className={`rounded-2xl p-6 sm:p-8 border-2 transition-all cursor-pointer flex flex-col justify-between ${
               selectedPackage === 'double'
-                ? 'border-[#E32636] bg-[#F5F5F7] shadow-md'
-                : 'border-neutral-200 bg-white hover:border-neutral-300'
+                ? 'border-[#B51222] bg-white shadow-md ring-2 ring-[#B51222]/10'
+                : 'border-[#D5D2CB] bg-white/70 hover:bg-white hover:border-[#6E7075]'
             }`}
           >
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#777777]">
-                  Double Package
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-[#E9E7E2] pb-3">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#B51222]">
+                  PACKAGE B · FLEET &amp; DUAL PACK
                 </span>
                 <input
                   type="radio"
-                  name="package-select"
+                  name="package-choice"
                   checked={selectedPackage === 'double'}
                   onChange={() => onSelectPackage('double')}
-                  className="w-4 h-4 text-[#E32636] accent-[#E32636]"
-                  aria-label="2 Fuel Pumps"
+                  aria-label="Select Package B: 2 Fuel Pumps"
+                  className="w-4 h-4 accent-[#B51222]"
                 />
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-black text-[#292929] font-display mb-2">
-                2 FUEL PUMPS
-              </h3>
-
-              <div className="mb-6">
-                <span className="text-3xl sm:text-4xl font-black text-[#292929] font-mono tabular-nums">
-                  {formatNaira(adminData.doublePrice)}
-                </span>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold uppercase font-display text-[#1B1C1F]">
+                  TWO FUEL PUMPS
+                </h3>
+                <div className="mt-2">
+                  <span className="text-3xl sm:text-4xl font-bold font-mono tabular-nums text-[#B51222]">
+                    {formatNaira(config.prices.doublePump)}
+                  </span>
+                </div>
               </div>
 
-              <ul className="space-y-2 text-xs sm:text-sm text-[#777777] mb-6">
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-[#E32636] shrink-0 mt-0.5" />
-                  <span>2x Electric Fuel Pump Units</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-[#E32636] shrink-0 mt-0.5" />
-                  <span>Delivery arrangement confirmed by seller</span>
-                </li>
-              </ul>
+              <div className="space-y-3 pt-4 border-t border-[#E9E7E2] text-xs sm:text-sm text-[#2B2D31]">
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>2x FRANKBLAISE Electric Fuel Pump Units (12V)</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>2x Micron Inlet Strainer Filter Socks</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>2x Submersible Rubber Fuel Hoses &amp; Clamps</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>2x 2-Pin Electrical Pigtail Wiring Harnesses</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-[#B51222] shrink-0 mt-0.5" />
+                  <span>Ideal for multi-vehicle owners or backup inventory</span>
+                </div>
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSelect('double');
-              }}
-              className={`min-tap-target w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer text-center ${
-                selectedPackage === 'double'
-                  ? 'bg-[#E32636] text-white hover:bg-[#B51222]'
-                  : 'bg-[#151518] text-white hover:bg-neutral-800'
-              }`}
-            >
-              SELECT THIS PACKAGE
-            </button>
+            <div className="pt-8">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelectAndScroll('double');
+                }}
+                className={`min-tap-target w-full py-3.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center flex items-center justify-center gap-2 ${
+                  selectedPackage === 'double'
+                    ? 'bg-[#B51222] text-white hover:bg-[#8F0E1B]'
+                    : 'bg-[#1B1C1F] text-white hover:bg-[#2B2D31]'
+                }`}
+              >
+                <span>SELECT PACKAGE B</span>
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Note */}
-        <p className="text-center text-xs text-[#777777]">
-          Confirm product compatibility and applicable delivery terms before completing your order.
-        </p>
       </div>
     </section>
   );

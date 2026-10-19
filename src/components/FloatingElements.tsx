@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { siteConfig, formatNaira } from '../config/site';
-import { useAdminData } from '../hooks/useAdminData';
+import { useProductConfig } from '../hooks/useProductConfig';
+import { formatNaira } from '../config/site';
 import { PackageSelection } from './PackagesSection';
 import { MessageCircle, ArrowDown } from 'lucide-react';
 
@@ -14,14 +14,14 @@ export const FloatingElements: React.FC<FloatingElementsProps> = ({
   onOrderClick,
 }) => {
   const [isFormInView, setIsFormInView] = useState(false);
-  const adminData = useAdminData();
+  const config = useProductConfig();
 
   const price =
     selectedPackage === 'double'
-      ? adminData.doublePrice
-      : adminData.singlePrice;
+      ? config.prices.doublePump
+      : config.prices.singlePump;
 
-  const currentWhatsApp = adminData.whatsappNumber || siteConfig.whatsappNumber;
+  const currentWhatsApp = config.whatsappNumber;
   const hasWhatsApp = Boolean(currentWhatsApp && currentWhatsApp.trim() !== '');
 
   useEffect(() => {
@@ -41,37 +41,30 @@ export const FloatingElements: React.FC<FloatingElementsProps> = ({
 
   return (
     <>
-      {/* WhatsApp Floating Button: Always present when WhatsApp is set */}
+      {/* WhatsApp Floating Button: Always accessible */}
       {hasWhatsApp && (
         <aside
-          aria-label="Direct Customer Support on WhatsApp"
+          aria-label="Direct Technical Support on WhatsApp"
           className={`fixed right-4 z-40 transition-all duration-300 ${
             !isFormInView ? 'bottom-20 md:bottom-6' : 'bottom-6'
           }`}
         >
           <a
             href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-              'Hello FRANKBLAISE PARTS, I want to inquire about the FRANKBLAISE Electric Fuel Pump Plus.'
+              'Hello FRANKBLAISE PARTS, I would like to inquire about the FRANKBLAISE Electric Fuel Pump Plus.'
             )}`}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Chat with FRANKBLAISE PARTS on WhatsApp at ${currentWhatsApp}`}
-            title={`Chat with us on WhatsApp (${currentWhatsApp})`}
-            className="group min-tap-target relative flex items-center gap-2.5 px-3.5 py-3 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-2xl shadow-emerald-950/60 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-white/20"
+            title={`Direct WhatsApp Consultation (${currentWhatsApp})`}
+            className="group min-tap-target relative flex items-center gap-2 px-3 py-2.5 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xl shadow-black/30 transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-white/30"
           >
-            {/* Live pulsing online dot */}
-            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-400 border-2 border-[#0B0B0D]"></span>
-            </span>
-
-            <MessageCircle className="w-6 h-6 shrink-0 fill-white/10" />
-
+            <MessageCircle className="w-5 h-5 shrink-0" />
             <div className="hidden sm:flex flex-col text-left leading-tight pr-1">
-              <span className="text-[11px] font-bold tracking-tight text-white uppercase font-display">
+              <span className="text-[10px] font-mono uppercase font-bold tracking-tight text-white">
                 WhatsApp Us
               </span>
-              <span className="text-[10px] font-mono font-medium text-emerald-100 opacity-95">
+              <span className="text-[10px] font-mono text-emerald-100">
                 {currentWhatsApp}
               </span>
             </div>
@@ -82,23 +75,23 @@ export const FloatingElements: React.FC<FloatingElementsProps> = ({
       {/* Sticky Bottom Order Bar on Mobile: Hidden while order form is in view */}
       {!isFormInView && (
         <aside
-          aria-label="Quick Order"
-          className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-[#0B0B0D]/95 backdrop-blur-md border-t border-neutral-800 px-4 py-2.5 shadow-2xl transition-all"
+          aria-label="Mobile Quick Order Bar"
+          className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-[#1B1C1F]/95 backdrop-blur-md border-t border-[#2B2D31] px-4 py-2.5 shadow-2xl transition-all"
         >
           <div className="flex items-center justify-between gap-3 max-w-md mx-auto">
             <div className="flex flex-col">
-              <span className="text-base font-black text-white font-mono tabular-nums leading-tight">
+              <span className="text-base font-bold text-[#F6F4EF] font-mono tabular-nums leading-tight">
                 {formatNaira(price)}
               </span>
-              <span className="text-[10px] text-neutral-400">
-                {selectedPackage === 'double' ? '2 Pumps' : '1 Pump'} · Pay on Delivery
+              <span className="text-[10px] font-mono text-neutral-400">
+                {selectedPackage === 'double' ? '2 Fuel Pumps' : '1 Fuel Pump'} · Pay on Delivery
               </span>
             </div>
 
             <button
               onClick={onOrderClick}
               type="button"
-              className="min-tap-target px-4 py-2 text-xs font-bold text-white bg-[#E32636] hover:bg-[#B51222] rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="min-tap-target px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-[#B51222] hover:bg-[#8F0E1B] rounded-lg shadow-md transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <span>Order Now</span>
               <ArrowDown className="w-3.5 h-3.5" />

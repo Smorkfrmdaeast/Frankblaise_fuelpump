@@ -1,101 +1,132 @@
 import React from 'react';
-import { siteConfig, formatNaira } from '../config/site';
-import { useAdminData } from '../hooks/useAdminData';
-import { ImageWithPlaceholder } from './ImageWithPlaceholder';
-import { ArrowDown, CheckCircle2 } from 'lucide-react';
+import { useProductConfig } from '../hooks/useProductConfig';
+import { formatNaira } from '../config/site';
+import { ArrowDown, Check, ShieldCheck } from 'lucide-react';
 
 interface HeroSectionProps {
   onOrderClick: () => void;
-  onCheckCompatibility: () => void;
+  onExploreClick: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
   onOrderClick,
-  onCheckCompatibility,
+  onExploreClick,
 }) => {
-  const adminData = useAdminData();
-  const heroImage = siteConfig.productImages[0];
+  const config = useProductConfig();
+  const heroImage = config.productImages[0];
 
   return (
-    <section className="relative bg-[#0B0B0D] text-white pt-8 pb-14 sm:py-16 lg:py-20 border-b border-neutral-800">
+    <section id="overview" className="bg-[#F6F4EF] border-b border-[#D5D2CB] pt-8 pb-14 sm:py-16 lg:py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* Left Column: Headlines & Action */}
-          <div className="lg:col-span-7 space-y-5 text-left">
-            {/* Badges */}
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#E32636]">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#151518] border border-neutral-800 text-white">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#E32636]" />
-                FREE DELIVERY
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
+          {/* Left Column: Technical Narrative & Actions */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Category Lead & Optional Technical Identifier */}
+            <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-[#6E7075]">
+              <span className="uppercase tracking-widest text-[#B51222] font-bold">
+                {config.category}
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#151518] border border-neutral-800 text-white">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#E32636]" />
-                PAY ON DELIVERY
-              </span>
+              {config.technicalIdentifier && (
+                <>
+                  <span aria-hidden="true">/</span>
+                  <span className="bg-[#E9E7E2] px-2 py-0.5 rounded text-[#2B2D31]">
+                    ID: {config.technicalIdentifier}
+                  </span>
+                </>
+              )}
             </div>
 
-            {/* Headline */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white font-display text-balance leading-tight">
-              Fuel Pump Problems? Get the Right Replacement.
+            {/* Primary Headline in Technical Condensed Grotesk */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight uppercase font-display text-[#1B1C1F] leading-tight text-balance">
+              {config.productName}
             </h1>
 
-            {/* Subheadline */}
-            <p className="text-lg sm:text-xl font-semibold text-[#E32636] font-display">
-              Get back on the road with the {siteConfig.productName}.
+            {/* Factual Technical Proposition (1-2 sentences) */}
+            <p className="text-base sm:text-lg text-[#2B2D31] max-w-2xl leading-relaxed">
+              {config.factualOverview}
             </p>
 
-            {/* Description */}
-            <p className="text-sm sm:text-base text-neutral-300 max-w-2xl leading-relaxed">
-              Looking for a replacement fuel pump? Choose a pump suited to your vehicle and confirm compatibility before ordering.
-            </p>
-
-            {/* Prices */}
-            <div className="pt-2 pb-1 flex flex-wrap items-center gap-4 text-sm sm:text-base font-bold font-mono">
-              <div className="bg-[#151518] border border-neutral-800 px-4 py-2.5 rounded-xl">
-                <span className="text-neutral-400 text-xs block font-sans uppercase">Single Unit</span>
-                <span className="text-white">1 FUEL PUMP — {formatNaira(adminData.singlePrice)}</span>
-              </div>
-              <div className="bg-[#151518] border border-neutral-800 px-4 py-2.5 rounded-xl">
-                <span className="text-neutral-400 text-xs block font-sans uppercase">Double Pack</span>
-                <span className="text-[#E32636]">2 FUEL PUMPS — {formatNaira(adminData.doublePrice)}</span>
+            {/* Authoritative Package Pricing Strip */}
+            <div className="p-4 sm:p-5 bg-[#E9E7E2] border border-[#D5D2CB] rounded-xl">
+              <span className="block text-xs font-mono uppercase tracking-wider text-[#6E7075] mb-2">
+                Authoritative Package Pricing (NGN)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-white p-3.5 rounded-lg border border-[#D5D2CB]">
+                  <span className="text-xs text-[#6E7075] block font-mono">OPTION A · 1 UNIT</span>
+                  <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#1B1C1F]">
+                    {formatNaira(config.prices.singlePump)}
+                  </span>
+                </div>
+                <div className="bg-white p-3.5 rounded-lg border border-[#D5D2CB]">
+                  <span className="text-xs text-[#B51222] block font-mono font-bold">OPTION B · 2 UNITS</span>
+                  <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#B51222]">
+                    {formatNaira(config.prices.doublePump)}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* CTAs */}
-            <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
+            {/* Factual Highlights without Fluff */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-[#2B2D31]">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-[#B51222] shrink-0" />
+                <span>12V DC Nominal In-Tank Replacement</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-[#B51222] shrink-0" />
+                <span>Includes Filter Strainer & Pigtail Harness</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#B51222] shrink-0" />
+                <span>Vehicle Compatibility Verified Before Dispatch</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-[#B51222] shrink-0" />
+                <span>Pay on Delivery Nationwide across Nigeria</span>
+              </div>
+            </div>
+
+            {/* Dual Actions: Order Now & Explore Specifications */}
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
               <button
                 onClick={onOrderClick}
                 type="button"
-                className="min-tap-target px-7 py-3.5 text-sm sm:text-base font-bold text-white bg-[#E32636] hover:bg-[#B51222] rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                className="min-tap-target px-8 py-4 bg-[#B51222] hover:bg-[#8F0E1B] text-white font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
-                <span>ORDER YOUR FUEL PUMP</span>
+                <span>ORDER NOW</span>
                 <ArrowDown className="w-4 h-4" />
               </button>
 
               <button
-                onClick={onCheckCompatibility}
+                onClick={onExploreClick}
                 type="button"
-                className="min-tap-target px-6 py-3.5 text-sm sm:text-base font-semibold text-neutral-300 hover:text-white bg-[#151518] hover:bg-neutral-800 border border-neutral-800 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="min-tap-target px-7 py-4 bg-transparent hover:bg-[#E9E7E2] border border-[#2B2D31] text-[#1B1C1F] font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center cursor-pointer"
               >
-                <span>CHECK VEHICLE COMPATIBILITY</span>
+                <span>EXPLORE PRODUCT</span>
               </button>
             </div>
           </div>
 
-          {/* Right Column: Large Product Image */}
+          {/* Right Column: Dominant Genuine Fuel Pump Photograph */}
           <div className="lg:col-span-5">
-            <div className="relative mx-auto max-w-md lg:max-w-none rounded-2xl p-2 bg-[#151518] border border-neutral-800 shadow-2xl">
-              <ImageWithPlaceholder
-                src={heroImage?.url}
-                alt={heroImage?.alt || 'FRANKBLAISE ELECTRIC FUEL PUMP PLUS'}
-                slotLabel={heroImage?.slotName || 'Electric Fuel Pump'}
-                aspectRatio="4/3"
-                priority={true}
-              />
-              <div className="p-3 text-center">
-                <span className="text-xs font-mono text-neutral-400">
-                  {siteConfig.productName}
-                </span>
+            <div className="relative bg-white border border-[#D5D2CB] p-3 sm:p-4 rounded-2xl shadow-sm">
+              <div className="aspect-[4/3] rounded-xl overflow-hidden bg-[#E9E7E2] flex items-center justify-center">
+                {heroImage?.url ? (
+                  <img
+                    src={heroImage.url}
+                    alt={heroImage.alt}
+                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    loading="eager"
+                  />
+                ) : (
+                  <span className="text-xs font-mono text-[#6E7075]">Image unavailable</span>
+                )}
+              </div>
+
+              <div className="pt-3 px-1 flex items-center justify-between text-xs text-[#6E7075] font-mono border-t border-[#E9E7E2] mt-3">
+                <span className="font-semibold text-[#1B1C1F]">FIG 01. CYLINDRICAL UNIT</span>
+                <span>12V DC SPEC</span>
               </div>
             </div>
           </div>

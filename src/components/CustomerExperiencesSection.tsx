@@ -1,171 +1,116 @@
-import React from 'react';
-import { siteConfig, ReviewScreenshotItem } from '../config/site';
-import { useAdminData } from '../hooks/useAdminData';
-import { ReusableCarousel } from './ReusableCarousel';
-import { MessageSquare, MessageCircle, Maximize2, UploadCloud } from 'lucide-react';
+import React, { useState } from 'react';
+import { useProductConfig } from '../hooks/useProductConfig';
+import { ChevronLeft, ChevronRight, MessageSquare, Maximize2, X } from 'lucide-react';
 
-interface CustomerExperiencesSectionProps {
-  onOpenAdminPortal?: () => void;
-}
+export const CustomerExperiencesSection: React.FC = () => {
+  const config = useProductConfig();
+  const reviews = config.reviewScreenshots.filter((r) => r.url);
 
-export const CustomerExperiencesSection: React.FC<CustomerExperiencesSectionProps> = ({
-  onOpenAdminPortal,
-}) => {
-  const adminData = useAdminData();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-  // Prefer uploaded screenshots from admin storage if available, otherwise siteConfig
-  const activeScreenshots: ReviewScreenshotItem[] =
-    adminData.reviewScreenshots.length > 0
-      ? adminData.reviewScreenshots.map((item) => ({
-          id: item.id,
-          url: item.url,
-          caption: item.caption,
-        }))
-      : siteConfig.reviewScreenshots.length > 0
-      ? siteConfig.reviewScreenshots
-      : [
-          { id: 'rev-ph-1', url: null, caption: 'Customer WhatsApp conversation 1' },
-          { id: 'rev-ph-2', url: null, caption: 'Customer WhatsApp conversation 2' },
-          { id: 'rev-ph-3', url: null, caption: 'Customer WhatsApp conversation 3' },
-        ];
+  // If no genuine review screenshots exist, hide the section completely
+  if (reviews.length === 0) {
+    return null;
+  }
 
-  const hasUploadedReviews = adminData.reviewScreenshots.length > 0 || siteConfig.reviewScreenshots.length > 0;
-  const currentWhatsApp = adminData.whatsappNumber || siteConfig.whatsappNumber;
-  const hasWhatsApp = Boolean(currentWhatsApp && currentWhatsApp.trim() !== '');
+  const activeReview = reviews[activeIndex];
 
-  const renderReviewSlide = (item: ReviewScreenshotItem, index: number, openLightbox?: (index: number) => void) => {
-    return (
-      <div className="bg-[#151518] rounded-2xl p-4 border border-neutral-800 text-white flex flex-col justify-between h-full">
-        {item.url ? (
-          <div className="relative aspect-[3/4] sm:aspect-[9/16] max-h-[460px] rounded-xl overflow-hidden bg-black flex items-center justify-center group">
-            <img
-              src={item.url}
-              alt="Genuine WhatsApp customer review screenshot"
-              className="w-full h-full object-contain"
-            />
-            {openLightbox && (
-              <button
-                type="button"
-                onClick={() => openLightbox(index)}
-                aria-label="Enlarge review screenshot"
-                className="min-tap-target absolute top-2 right-2 p-2 rounded-lg bg-black/70 hover:bg-black text-white cursor-pointer transition-colors shadow"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="aspect-[4/3] rounded-xl bg-neutral-900 border border-neutral-800 flex flex-col items-center justify-center p-6 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-neutral-800 text-neutral-500 flex items-center justify-center">
-              <MessageSquare className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-mono text-neutral-300 max-w-xs">
-              Insert genuine customer review screenshot.
-            </span>
-            <span className="text-[11px] text-neutral-500">
-              Redact customer personal contact info before uploading.
-            </span>
-
-            {onOpenAdminPortal && (
-              <button
-                type="button"
-                onClick={onOpenAdminPortal}
-                className="mt-2 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-[11px] font-semibold text-[#E32636] border border-neutral-700 transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                <UploadCloud className="w-3.5 h-3.5" />
-                <span>Upload as Seller</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {item.caption && (
-          <div className="mt-3 text-center">
-            <span className="text-xs text-neutral-300 font-medium">{item.caption}</span>
-          </div>
-        )}
-      </div>
-    );
+  const handlePrev = () => {
+    setActiveIndex((prev) => (prev > 0 ? prev - 1 : reviews.length - 1));
   };
 
-  const renderLightbox = (item: ReviewScreenshotItem) => {
-    return (
-      <div className="flex flex-col items-center max-w-lg w-full">
-        <div className="w-full max-h-[75vh] rounded-2xl overflow-hidden bg-black flex items-center justify-center p-2">
-          {item.url && (
-            <img
-              src={item.url}
-              alt={item.caption || 'Customer review screenshot enlarged'}
-              className="max-h-[70vh] w-auto object-contain rounded-xl"
-            />
-          )}
-        </div>
-        {item.caption && (
-          <div className="mt-3 text-center text-white text-xs font-semibold">
-            {item.caption}
-          </div>
-        )}
-      </div>
-    );
+  const handleNext = () => {
+    setActiveIndex((prev) => (prev < reviews.length - 1 ? prev + 1 : 0));
   };
 
   return (
-    <section id="reviews" className="py-16 lg:py-20 bg-[#0B0B0D] text-white border-b border-neutral-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto text-center space-y-3 mb-12">
-          <div className="flex items-center justify-center gap-2">
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display">
-              Customer Experiences
-            </h2>
-            {onOpenAdminPortal && (
-              <button
-                onClick={onOpenAdminPortal}
-                title="Seller Review Upload Portal"
-                className="text-neutral-500 hover:text-[#E32636] transition-colors p-1"
-                aria-label="Open seller review upload portal"
-              >
-                <UploadCloud className="w-4 h-4" />
-              </button>
+    <section id="reviews" className="bg-[#E9E7E2] text-[#1B1C1F] py-16 lg:py-24 border-b border-[#D5D2CB]">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-10">
+        <div className="space-y-3">
+          <div className="text-xs font-mono uppercase tracking-widest text-[#B51222] font-bold">
+            SECTION 08 · BUYER EXPERIENCES
+          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold uppercase font-display tracking-tight text-[#1B1C1F]">
+            Verified Customer Evidence
+          </h2>
+          <p className="text-sm sm:text-base text-[#2B2D31]">
+            Genuine WhatsApp conversations and feedback screenshots from verified Nigerian buyers. Personal contact details are redacted for privacy.
+          </p>
+        </div>
+
+        {/* Editorial Screenshot Card */}
+        <div className="bg-white border border-[#D5D2CB] rounded-2xl p-6 sm:p-8 shadow-sm space-y-4">
+          <div className="relative aspect-[3/4] sm:aspect-[9/16] max-h-[500px] w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
+            <img
+              src={activeReview.url!}
+              alt={activeReview.caption || 'Verified customer feedback screenshot'}
+              className="w-full h-full object-contain"
+            />
+
+            <button
+              type="button"
+              onClick={() => setIsLightboxOpen(true)}
+              aria-label="Enlarge feedback screenshot"
+              className="min-tap-target absolute top-3 right-3 p-2.5 rounded-lg bg-[#1B1C1F]/80 hover:bg-[#1B1C1F] text-white transition-colors cursor-pointer"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+
+            {reviews.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  aria-label="Previous review"
+                  className="min-tap-target absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-lg bg-[#1B1C1F]/80 hover:bg-[#1B1C1F] text-white transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  aria-label="Next review"
+                  className="min-tap-target absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-lg bg-[#1B1C1F]/80 hover:bg-[#1B1C1F] text-white transition-colors cursor-pointer"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
             )}
           </div>
-          <p className="text-sm text-neutral-400">
-            Genuine customer review screenshots and experiences as supplied by verified buyers.
-          </p>
-        </div>
 
-        <div className="max-w-3xl mx-auto">
-          <ReusableCarousel<ReviewScreenshotItem>
-            items={activeScreenshots}
-            renderItem={renderReviewSlide}
-            renderLightboxContent={renderLightbox}
-            enableLightbox={hasUploadedReviews}
-            ariaLabel="Customer Review Screenshots"
-          />
-        </div>
-
-        {/* Contact seller note below */}
-        <div className="mt-12 text-center space-y-3">
-          <p className="text-sm text-neutral-300">
-            Have questions about the product? Contact the seller for more information.
-          </p>
-
-          {hasWhatsApp && (
-            <div>
-              <a
-                href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                  'Hello FRANKBLAISE PARTS, I would like to ask a few questions about customer reviews and compatibility for the Electric Fuel Pump Plus.'
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-tap-target inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer shadow-lg"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Contact Seller on WhatsApp ({currentWhatsApp})</span>
-              </a>
-            </div>
-          )}
+          <div className="flex items-center justify-between pt-2 border-t border-[#E9E7E2] text-xs font-mono text-[#6E7075]">
+            <span>{activeReview.caption || 'Customer feedback message'}</span>
+            <span>REVIEW {activeIndex + 1} OF {reviews.length}</span>
+          </div>
         </div>
       </div>
+
+      {/* Lightbox for review */}
+      {isLightboxOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          <div className="relative max-w-lg w-full max-h-[90vh] flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => setIsLightboxOpen(false)}
+              aria-label="Close enlarged review"
+              className="min-tap-target absolute -top-12 right-0 p-2 text-white/80 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <img
+              src={activeReview.url!}
+              alt="Enlarged customer review screenshot"
+              className="max-h-[80vh] w-auto object-contain rounded-xl"
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 };

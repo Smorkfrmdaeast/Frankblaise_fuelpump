@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'smokeginobli092@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Customer order validation
+    function isValidOrder(data) {
+      return data.keys().hasAll(['orderReference', 'packageKey', 'quantity', 'unitPrice', 'productTotal', 'customer', 'vehicle', 'delivery', 'status', 'createdAt'])
+        && data.orderReference is string && data.orderReference.size() >= 5 && data.orderReference.size() <= 64
+        && data.packageKey in ['single', 'double']
+        && data.quantity is number && data.quantity >= 1 && data.quantity <= 100
+        && data.unitPrice is number && data.unitPrice > 0
+        && data.productTotal is number && data.productTotal > 0
+        && data.status in ['New', 'Contacted', 'Confirmed', 'Dispatched', 'Delivered', 'Cancelled']
+        && data.customer is map
+        && data.customer.fullName is string && data.customer.fullName.size() > 0 && data.customer.fullName.size() <= 150
+        && data.customer.primaryPhone is string && data.customer.primaryPhone.size() >= 8 && data.customer.primaryPhone.size() <= 30
+        && data.vehicle is map
+        && data.vehicle.make is string && data.vehicle.make.size() > 0 && data.vehicle.make.size() <= 80
+        && data.vehicle.model is string && data.vehicle.model.size() > 0 && data.vehicle.model.size() <= 80
+        && data.delivery is map
+        && data.delivery.state is string && data.delivery.state.size() > 0 && data.delivery.state.size() <= 80
+        && data.delivery.fullAddress is string && data.delivery.fullAddress.size() > 0 && data.delivery.fullAddress.size() <= 400
+        && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    // Orders collection:
+    // - Customers can submit new orders with status 'New'
+    // - PII Protection: Only administrators can list, read details, and update status
+    match /orders/{orderId} {
+      allow create: if isValidId(orderId)
+                    && isValidOrder(incoming())
+                    && incoming().status == 'New';
+      allow read, list: if isAdmin();
+      allow update: if isAdmin()
+                    && isValidId(orderId)
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notes', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    // Product configuration collection:
+    // - Public read for storefront display
+    // - Admin only for updating prices and specs
+    match /product_config/{configId} {
+      allow get, list: if true;
+      allow write: if isAdmin() && isValidId(configId);
+    }
+
+    // Admins registry
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

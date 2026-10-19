@@ -45,7 +45,7 @@ export const VideoDemonstration: React.FC<VideoDemonstrationProps> = ({ onOrderC
           <div className="relative aspect-video bg-neutral-900 flex items-center justify-center overflow-hidden">
             {/* Visual background simulation */}
             <img
-              src="/src/assets/images/customer_car_installation_1792348149630.jpg"
+              src="/images/customer_car_installation_1792348149630.jpg"
               alt="Fuel pump bench testing and technician verification"
               referrerPolicy="no-referrer"
               className={`w-full h-full object-cover transition-opacity duration-500 ${

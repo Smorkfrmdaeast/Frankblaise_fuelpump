@@ -1,33 +1,47 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-bg: #0B0B0D;
-  --color-brand-dark: #151518;
-  --color-brand-red: #E32636;
-  --color-brand-deepred: #B51222;
-  --color-brand-light: #F5F5F7;
-  --color-brand-body: #292929;
-  --color-brand-muted: #777777;
-  --font-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --color-eng-canvas: #F6F4EF;
+  --color-eng-surface: #E9E7E2;
+  --color-eng-border: #D5D2CB;
+  --color-eng-graphite: #2B2D31;
+  --color-eng-charcoal: #1B1C1F;
+  --color-eng-red: #B51222;
+  --color-eng-muted: #6E7075;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Barlow Condensed', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 :root {
-  --bg-dark: #0B0B0D;
-  --bg-dark-secondary: #151518;
-  --brand-red: #E32636;
-  --brand-deep-red: #B51222;
-  --bg-light: #F5F5F7;
-  --text-body: #292929;
-  --text-muted: #777777;
+  --bg-canvas: #F6F4EF;
+  --bg-surface: #E9E7E2;
+  --border-hairline: #D5D2CB;
+  --text-charcoal: #1B1C1F;
+  --text-graphite: #2B2D31;
+  --text-muted: #6E7075;
+  --accent-red: #B51222;
 }
 
 body {
-  background-color: #0B0B0D;
-  color: #292929;
+  background-color: #F6F4EF;
+  color: #1B1C1F;
   font-family: var(--font-sans);
+  font-size: 16px; /* 16px minimum body on mobile */
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Minimum 44px tap targets for mobile interactive controls */
+.min-tap-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Hairline border utility */
+.border-hairline {
+  border-color: #D5D2CB;
 }
 
 /* Ensure smooth touch scroll snapping */
@@ -44,8 +58,27 @@ body {
   scroll-snap-align: center;
 }
 
-/* Minimum 44px tap targets for mobile interactive controls */
-.min-tap-target {
-  min-height: 44px;
-  min-width: 44px;
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

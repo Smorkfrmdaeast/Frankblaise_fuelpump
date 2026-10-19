@@ -1,6 +1,5 @@
 import React from 'react';
-import { siteConfig } from '../config/site';
-import { useAdminData } from '../hooks/useAdminData';
+import { useProductConfig } from '../hooks/useProductConfig';
 import { MessageCircle } from 'lucide-react';
 
 interface HeaderProps {
@@ -8,53 +7,53 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOrderClick }) => {
-  const adminData = useAdminData();
-  const currentWhatsApp = adminData.whatsappNumber || siteConfig.whatsappNumber;
-  const hasWhatsApp = Boolean(currentWhatsApp && currentWhatsApp.trim() !== '');
+  const config = useProductConfig();
+  const whatsappDigits = config.whatsappNumber.replace(/[^0-9]/g, '');
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#0B0B0D]/95 backdrop-blur-md border-b border-neutral-800 text-white">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-6 px-4 sm:px-6 py-3.5">
-        {/* Brand wordmark */}
-        <a href="#top" className="flex items-center gap-2 group whitespace-nowrap shrink-0">
-          <span className="font-extrabold tracking-wider text-lg sm:text-xl text-white uppercase font-display">
-            {siteConfig.brandName}
-          </span>
+    <header className="sticky top-0 z-40 w-full bg-[#F6F4EF]/95 backdrop-blur-md border-b border-[#D5D2CB] text-[#1B1C1F]">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-8 px-4 sm:px-6 py-3.5">
+        {/* Zone 1: Single Brand Wordmark in Display Font */}
+        <a
+          href="#top"
+          className="text-lg sm:text-xl font-bold tracking-tight uppercase font-display text-[#1B1C1F] hover:text-[#B51222] transition-colors whitespace-nowrap shrink-0"
+        >
+          {config.brandName}
         </a>
 
-        {/* Minimal Nav */}
-        <nav className="hidden md:flex items-center gap-6 text-xs sm:text-sm font-medium text-neutral-300">
-          <a href="#benefits" className="hover:text-white transition-colors">Benefits</a>
-          <a href="#specifications" className="hover:text-white transition-colors">Specifications</a>
-          <a href="#diagram" className="hover:text-white transition-colors">Fuel Diagram</a>
-          <a href="#packages" className="hover:text-white transition-colors">Packages</a>
-          <a href="#reviews" className="hover:text-white transition-colors">Reviews</a>
+        {/* Zone 2: Single-line Text Navigation Links */}
+        <nav className="hidden lg:flex items-center gap-7 text-xs font-semibold uppercase tracking-wider text-[#2B2D31]">
+          <a href="#overview" className="hover:text-[#B51222] transition-colors whitespace-nowrap shrink-0">Overview</a>
+          <a href="#engineering" className="hover:text-[#B51222] transition-colors whitespace-nowrap shrink-0">Engineering</a>
+          <a href="#specifications" className="hover:text-[#B51222] transition-colors whitespace-nowrap shrink-0">Specifications</a>
+          <a href="#video-demo" className="hover:text-[#B51222] transition-colors whitespace-nowrap shrink-0">Demonstration</a>
+          <a href="#packages" className="hover:text-[#B51222] transition-colors whitespace-nowrap shrink-0">Packages</a>
+          <a href="#compatibility" className="hover:text-[#B51222] transition-colors whitespace-nowrap shrink-0">Compatibility</a>
         </nav>
 
-        {/* Action Button & WhatsApp Contact */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {hasWhatsApp && (
+        {/* Zone 3: 1 Primary Action + Direct WhatsApp */}
+        <div className="flex items-center gap-3 shrink-0">
+          {config.whatsappNumber && (
             <a
-              href={`https://wa.me/${currentWhatsApp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                'Hello FRANKBLAISE PARTS, I would like to inquire about the FRANKBLAISE Electric Fuel Pump Plus.'
+              href={`https://wa.me/${whatsappDigits}?text=${encodeURIComponent(
+                'Hello FRANKBLAISE PARTS, I would like to inquire about the Electric Fuel Pump Plus.'
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`WhatsApp us at ${currentWhatsApp}`}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+              aria-label={`Contact on WhatsApp at ${config.whatsappNumber}`}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#E9E7E2] hover:bg-[#D5D2CB] text-[#1B1C1F] text-xs font-mono font-medium transition-colors"
             >
-              <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-              <span className="hidden lg:inline">WhatsApp:</span>
-              <span>{currentWhatsApp}</span>
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>WhatsApp</span>
             </a>
           )}
 
           <button
             onClick={onOrderClick}
             type="button"
-            className="min-tap-target px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#E32636] hover:bg-[#B51222] rounded-lg transition-colors cursor-pointer shadow-md"
+            className="min-tap-target px-5 py-2.5 bg-[#B51222] hover:bg-[#8F0E1B] text-white text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer shadow-sm"
           >
-            ORDER YOUR FUEL PUMP
+            ORDER NOW
           </button>
         </div>
       </div>

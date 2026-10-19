@@ -82,7 +82,7 @@ export const SpecificationsTable: React.FC = () => {
             <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-sm p-4">
               <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-neutral-900 mb-4">
                 <img
-                  src="/src/assets/images/fuel_pump_unboxing_kit_1792348148348.jpg"
+                  src="/images/fuel_pump_unboxing_kit_1792348148348.jpg"
                   alt="Complete Frankblaise Electric Fuel Pump installation accessories kit"
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
