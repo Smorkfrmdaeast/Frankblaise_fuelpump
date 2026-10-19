@@ -26,6 +26,7 @@ import {
   OrderStatus,
 } from '../types/product';
 import { siteConfig } from '../config/site';
+import { dispatchOrderEmailNotification } from './emailNotification';
 
 // Support both provisioned firebase-applet-config.json and VITE_ environment variables
 const resolvedConfig = {
@@ -319,6 +320,7 @@ export async function submitOrderToBackend(orderPayload: {
     primaryPhone: string;
     altPhone?: string;
     whatsappPhone?: string;
+    email?: string;
   };
   vehicle: {
     make: string;
@@ -363,6 +365,7 @@ export async function submitOrderToBackend(orderPayload: {
       primaryPhone: orderPayload.customer.primaryPhone,
       ...(orderPayload.customer.altPhone ? { altPhone: orderPayload.customer.altPhone } : {}),
       ...(orderPayload.customer.whatsappPhone ? { whatsappPhone: orderPayload.customer.whatsappPhone } : {}),
+      ...(orderPayload.customer.email ? { email: orderPayload.customer.email } : {}),
     },
     vehicle: {
       make: orderPayload.vehicle.make,
@@ -399,6 +402,13 @@ export async function submitOrderToBackend(orderPayload: {
     console.log(`Order ${orderReference} successfully saved to Firestore.`);
   } catch (err) {
     console.warn('Could not write order to Firestore, local queue preserved:', err);
+  }
+
+  // 3. Dispatch automated email notification to store owner
+  try {
+    await dispatchOrderEmailNotification(newOrder);
+  } catch (notifErr) {
+    console.warn('Could not dispatch email notification:', notifErr);
   }
 
   return { success: true, orderReference };

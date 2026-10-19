@@ -79,5 +79,19 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    // Email notifications log collection:
+    // - Creation allowed during order placement and notification dispatch
+    // - Full read/manage for admins
+    match /email_notifications/{notificationId} {
+      allow create: if isValidId(notificationId)
+                    && incoming().keys().hasAll(['recipient', 'subject', 'type', 'status', 'createdAt'])
+                    && incoming().recipient is string
+                    && incoming().subject is string
+                    && incoming().type in ['new_order_alert', 'customer_confirmation', 'test_alert', 'daily_digest']
+                    && incoming().status in ['sent', 'delivered', 'failed']
+                    && incoming().createdAt is string;
+      allow read, list, update, delete: if isAdmin();
+    }
   }
 }

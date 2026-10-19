@@ -32,6 +32,7 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
   const [primaryPhone, setPrimaryPhone] = useState('');
   const [altPhone, setAltPhone] = useState('');
   const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
 
   const [vehicleMake, setVehicleMake] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
@@ -184,6 +185,7 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
         primaryPhone: normalizedPrimary,
         altPhone: altPhone.trim() || undefined,
         whatsappPhone: whatsappPhone.trim() || undefined,
+        email: customerEmail.trim() || undefined,
       },
       vehicle: {
         make: vehicleMake.trim(),
@@ -486,6 +488,23 @@ export const OrderFormSection: React.FC<OrderFormSectionProps> = ({
                     placeholder="If different from primary phone"
                     className="w-full px-4 py-3 bg-[#F6F4EF] border border-[#D5D2CB] rounded-lg text-sm text-[#1B1C1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#B51222]"
                   />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label htmlFor="field-customerEmail" className="block text-xs font-semibold uppercase tracking-wider text-[#2B2D31] mb-1.5 font-mono">
+                    Email Address (Optional — for delivery invoice &amp; dispatch confirmation copy)
+                  </label>
+                  <input
+                    id="field-customerEmail"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    placeholder="e.g. yourname@example.com"
+                    className="w-full px-4 py-3 bg-[#F6F4EF] border border-[#D5D2CB] rounded-lg text-sm text-[#1B1C1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#B51222]"
+                  />
+                  <span className="text-[11px] font-mono text-[#6E7075] mt-1 block">
+                    We will send an automated dispatch notification and 1-year warranty certificate copy to this email.
+                  </span>
                 </div>
               </div>
             </fieldset>

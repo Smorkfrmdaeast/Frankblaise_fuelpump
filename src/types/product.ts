@@ -87,6 +87,7 @@ export interface OrderCustomer {
   primaryPhone: string;
   altPhone?: string;
   whatsappPhone?: string;
+  email?: string;
 }
 
 export interface OrderVehicle {

@@ -99,6 +99,46 @@
           "description": "ISO timestamp of last update"
         }
       }
+    },
+    "EmailNotification": {
+      "title": "EmailNotification",
+      "description": "Log of dispatched email notifications for customer orders and administrative alerts",
+      "type": "object",
+      "properties": {
+        "recipient": {
+          "type": "string",
+          "description": "Recipient email address"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Email subject header"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of email notification: new_order_alert, customer_confirmation, test_alert, daily_digest"
+        },
+        "orderReference": {
+          "type": "string",
+          "description": "Associated order reference if applicable"
+        },
+        "status": {
+          "type": "string",
+          "description": "Delivery status: sent, delivered, failed"
+        },
+        "contentSummary": {
+          "type": "string",
+          "description": "Brief text preview of message content"
+        },
+        "htmlBody": {
+          "type": "string",
+          "description": "Rendered email HTML body"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when notification was triggered"
+        }
+      },
+      "required": ["recipient", "subject", "type", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -109,6 +149,10 @@
     "/product_config/{configId}": {
       "schema": "ProductConfig",
       "description": "Authoritative pricing and specifications document"
+    },
+    "/email_notifications/{notificationId}": {
+      "schema": "EmailNotification",
+      "description": "Audit log of order notification emails and alerts"
     }
   }
 }

@@ -18,6 +18,8 @@ import {
 } from '../services/ownerAuth';
 import { OrderRecord, OrderStatus } from '../types/product';
 import { formatNaira } from '../config/site';
+import { DailyOrdersBarChart } from './DailyOrdersBarChart';
+import { EmailNotificationsManager } from './EmailNotificationsManager';
 import {
   ArrowLeft,
   Lock,
@@ -34,6 +36,10 @@ import {
   ShieldCheck,
   Settings,
   MessageCircle,
+  BarChart2,
+  Mail,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -58,14 +64,118 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [loginPin, setLoginPin] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // Active Tab: 'orders' | 'product' | 'reviews' | 'settings'
-  const [activeTab, setActiveTab] = useState<'orders' | 'product' | 'reviews' | 'settings'>('orders');
+  // Active Tab: 'orders' | 'analytics' | 'notifications' | 'product' | 'reviews' | 'settings'
+  const [activeTab, setActiveTab] = useState<
+    'orders' | 'analytics' | 'notifications' | 'product' | 'reviews' | 'settings'
+  >('orders');
+
+  // Sample data toggle for 7-day visualization
+  const [useSampleData, setUseSampleData] = useState(false);
+  const [isChartCollapsed, setIsChartCollapsed] = useState(false);
 
   // Orders State
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [orderSearch, setOrderSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [orderActionMessage, setOrderActionMessage] = useState('');
+
+  // Realistic 7-day order simulation for instant visualization preview
+  const sample7DayOrders = React.useMemo<OrderRecord[]>(() => {
+    const sampleMakes = [
+      { make: 'Toyota', model: 'Corolla 1.8L', year: '2012' },
+      { make: 'Toyota', model: 'Camry XLE', year: '2015' },
+      { make: 'Honda', model: 'Accord 2.4L', year: '2013' },
+      { make: 'Lexus', model: 'RX350 V6', year: '2010' },
+      { make: 'Hyundai', model: 'Elantra 1.6L', year: '2016' },
+      { make: 'Kia', model: 'Cerato 2.0L', year: '2014' },
+      { make: 'Nissan', model: 'Almera 1.5L', year: '2015' },
+    ];
+    const states = [
+      'Lagos State',
+      'Abuja FCT',
+      'Rivers State',
+      'Oyo State',
+      'Delta State',
+      'Kano State',
+      'Enugu State',
+    ];
+    const names = [
+      'Alhaji Usman Bello',
+      'Engr. Babatunde Fashola',
+      'Chief Emeka Eze',
+      'Mrs. Folake Adeyemi',
+      'Dr. Kenneth Okoro',
+      'Tariq Al-Hassan',
+      'Austin Osaze',
+    ];
+
+    const distribution = [
+      { daysAgo: 6, count: 2 },
+      { daysAgo: 5, count: 1 },
+      { daysAgo: 4, count: 3 },
+      { daysAgo: 3, count: 2 },
+      { daysAgo: 2, count: 4 },
+      { daysAgo: 1, count: 3 },
+      { daysAgo: 0, count: 2 },
+    ];
+
+    const now = new Date();
+    const list: OrderRecord[] = [];
+    let idx = 0;
+
+    distribution.forEach(({ daysAgo, count }) => {
+      for (let c = 0; c < count; c++) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - daysAgo);
+        d.setHours(9 + c * 3, 15 + c * 10, 0, 0);
+
+        const isDouble = idx % 3 === 0;
+        const vehicle = sampleMakes[idx % sampleMakes.length];
+        const state = states[idx % states.length];
+        const customerName = names[idx % names.length];
+        const status: OrderStatus =
+          daysAgo > 4
+            ? 'Delivered'
+            : daysAgo > 2
+            ? 'Dispatched'
+            : daysAgo > 1
+            ? 'Confirmed'
+            : 'New';
+
+        list.push({
+          id: `sample_ord_${idx}_${d.getTime()}`,
+          orderReference: `FB-SAMPLE-0${idx + 1}`,
+          packageKey: isDouble ? 'double' : 'single',
+          packageName: isDouble ? 'Two Fuel Pumps' : 'One Fuel Pump',
+          quantity: isDouble ? 2 : 1,
+          unitPrice: isDouble ? config.prices.doublePump : config.prices.singlePump,
+          productTotal: isDouble ? config.prices.doublePump : config.prices.singlePump,
+          customer: {
+            fullName: customerName,
+            primaryPhone: `+234 80${Math.floor(10000000 + Math.random() * 90000000)}`,
+            whatsappPhone: `+234 80${Math.floor(10000000 + Math.random() * 90000000)}`,
+          },
+          vehicle: {
+            make: vehicle.make,
+            model: vehicle.model,
+            productionYear: vehicle.year,
+          },
+          delivery: {
+            state,
+            cityTown: 'Commercial Hub',
+            fullAddress: `${12 + idx} Industrial Expressway`,
+          },
+          status,
+          createdAt: d.toISOString(),
+        });
+        idx++;
+      }
+    });
+
+    return list;
+  }, [config.prices]);
+
+  const effectiveOrders = useSampleData ? sample7DayOrders : orders;
 
   // Product & Pricing State
   const [singlePrice, setSinglePrice] = useState<number>(config.prices.singlePump);
@@ -561,13 +671,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className={`min-tap-target px-4 py-2 rounded-lg font-bold transition-colors whitespace-nowrap cursor-pointer ${
+            className={`min-tap-target px-4 py-2 rounded-lg font-bold transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'orders'
                 ? 'bg-[#1B1C1F] text-white'
                 : 'text-[#6E7075] hover:text-[#1B1C1F] hover:bg-[#E9E7E2]'
             }`}
           >
-            Orders Queue ({orders.length})
+            <Package className="w-3.5 h-3.5" />
+            <span>Orders Queue ({orders.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('analytics')}
+            className={`min-tap-target px-4 py-2 rounded-lg font-bold transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'analytics'
+                ? 'bg-[#1B1C1F] text-white'
+                : 'text-[#6E7075] hover:text-[#1B1C1F] hover:bg-[#E9E7E2]'
+            }`}
+          >
+            <BarChart2 className="w-3.5 h-3.5" />
+            <span>7-Day Volume Chart</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('notifications')}
+            className={`min-tap-target px-4 py-2 rounded-lg font-bold transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'notifications'
+                ? 'bg-[#1B1C1F] text-white'
+                : 'text-[#6E7075] hover:text-[#1B1C1F] hover:bg-[#E9E7E2]'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Email Notifications</span>
           </button>
 
           <button
@@ -579,7 +716,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 : 'text-[#6E7075] hover:text-[#1B1C1F] hover:bg-[#E9E7E2]'
             }`}
           >
-            Pricing &amp; Specifications
+            Pricing &amp; Specs
           </button>
 
           <button
@@ -591,19 +728,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 : 'text-[#6E7075] hover:text-[#1B1C1F] hover:bg-[#E9E7E2]'
             }`}
           >
-            Genuine Reviews ({config.reviewScreenshots.length})
+            Reviews ({config.reviewScreenshots.length})
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('settings')}
-            className={`min-tap-target px-4 py-2 rounded-lg font-bold transition-colors whitespace-nowrap cursor-pointer ${
+            className={`min-tap-target px-4 py-2 rounded-lg font-bold transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'settings'
                 ? 'bg-[#1B1C1F] text-white'
                 : 'text-[#6E7075] hover:text-[#1B1C1F] hover:bg-[#E9E7E2]'
             }`}
           >
-            Owner Settings
+            <Settings className="w-3.5 h-3.5" />
+            <span>Owner Settings</span>
           </button>
         </div>
       </header>
@@ -651,6 +789,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 <span>{orderActionMessage}</span>
               </div>
             )}
+
+            {/* Recharts Bar Chart Card (Collapsible) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#6E7075] flex items-center gap-1.5">
+                  <BarChart2 className="w-3.5 h-3.5 text-[#B51222]" />
+                  <span>7-Day Daily Order Volumes</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsChartCollapsed(!isChartCollapsed)}
+                  className="text-xs font-mono text-[#6E7075] hover:text-[#1B1C1F] flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{isChartCollapsed ? 'Expand Chart' : 'Collapse Chart'}</span>
+                  {isChartCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {!isChartCollapsed && (
+                <DailyOrdersBarChart
+                  orders={effectiveOrders}
+                  onGenerateSampleData={() => setUseSampleData(true)}
+                  onClearSampleData={() => setUseSampleData(false)}
+                  hasSampleData={useSampleData}
+                />
+              )}
+            </div>
 
             {/* Filters Row */}
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
@@ -777,7 +942,95 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
           </div>
         )}
 
-        {/* ================= TAB 2: PRICING & SPECS ================= */}
+        {/* ================= TAB 2: 7-DAY VOLUME & REVENUE ANALYTICS ================= */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold font-display uppercase text-[#1B1C1F]">
+                  7-Day Sales &amp; Order Volume Analytics
+                </h2>
+                <p className="text-xs text-[#6E7075] font-mono">
+                  Daily unit counts and revenue velocity across rolling 7-day windows.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={refreshOrders}
+                  className="min-tap-target px-3 py-2 bg-white border border-[#D5D2CB] rounded-lg text-xs font-mono text-[#2B2D31] hover:bg-[#E9E7E2] transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            <DailyOrdersBarChart
+              orders={effectiveOrders}
+              onGenerateSampleData={() => setUseSampleData(true)}
+              onClearSampleData={() => setUseSampleData(false)}
+              hasSampleData={useSampleData}
+            />
+
+            {/* Additional Analytics Insights Card */}
+            <div className="bg-white border border-[#D5D2CB] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+              <h3 className="text-base font-bold font-display uppercase tracking-tight text-[#1B1C1F]">
+                Operational Insights &amp; Dispatch Velocity
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+                <div className="p-4 bg-[#F6F4EF] rounded-xl border border-[#E9E7E2] space-y-1">
+                  <span className="text-[#6E7075] uppercase text-[10px] font-bold block">DISPATCH VERIFICATION RATE</span>
+                  <span className="text-lg font-bold text-[#1B1C1F] block">
+                    {effectiveOrders.length > 0
+                      ? `${Math.round(
+                          (effectiveOrders.filter((o) => o.status !== 'Cancelled').length /
+                            effectiveOrders.length) *
+                            100
+                        )}%`
+                      : '100%'}
+                  </span>
+                  <span className="text-[#6E7075] text-[11px] block">
+                    Active vs cancelled ratio
+                  </span>
+                </div>
+
+                <div className="p-4 bg-[#F6F4EF] rounded-xl border border-[#E9E7E2] space-y-1">
+                  <span className="text-[#6E7075] uppercase text-[10px] font-bold block">POPULAR PACKAGE</span>
+                  <span className="text-lg font-bold text-[#B51222] block">
+                    {effectiveOrders.filter((o) => o.packageKey === 'double').length >=
+                    effectiveOrders.filter((o) => o.packageKey === 'single').length
+                      ? 'Two Pumps Pack'
+                      : 'Single Pump Pack'}
+                  </span>
+                  <span className="text-[#6E7075] text-[11px] block">
+                    Highest commercial demand
+                  </span>
+                </div>
+
+                <div className="p-4 bg-[#F6F4EF] rounded-xl border border-[#E9E7E2] space-y-1">
+                  <span className="text-[#6E7075] uppercase text-[10px] font-bold block">TOP DESTINATION REGION</span>
+                  <span className="text-lg font-bold text-emerald-800 block">
+                    {effectiveOrders.length > 0
+                      ? effectiveOrders[0].delivery.state
+                      : 'Lagos & Southwest'}
+                  </span>
+                  <span className="text-[#6E7075] text-[11px] block">
+                    Leading delivery volume
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 3: EMAIL NOTIFICATIONS ================= */}
+        {activeTab === 'notifications' && (
+          <EmailNotificationsManager orders={effectiveOrders} />
+        )}
+
+        {/* ================= TAB 4: PRICING & SPECS ================= */}
         {activeTab === 'product' && (
           <form onSubmit={handleSaveProduct} className="max-w-3xl mx-auto space-y-8 bg-white border border-[#D5D2CB] rounded-2xl p-6 sm:p-8 shadow-sm">
             <div>
